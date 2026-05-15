@@ -1,0 +1,191 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "46299ae3-5a43-436d-9e19-36463cbbe3bd",
+  "files": [],
+  "subMetas": {
+    "08ccf": {
+      "importer": "gltf-mesh",
+      "uuid": "46299ae3-5a43-436d-9e19-36463cbbe3bd@08ccf",
+      "displayName": "",
+      "id": "08ccf",
+      "name": "Plane.117.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 60
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "5c2bd": {
+      "importer": "gltf-mesh",
+      "uuid": "46299ae3-5a43-436d-9e19-36463cbbe3bd@5c2bd",
+      "displayName": "",
+      "id": "5c2bd",
+      "name": "Plane.118.mesh",
+      "userData": {
+        "gltfIndex": 1,
+        "triangleCount": 64
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "53b65": {
+      "importer": "gltf-mesh",
+      "uuid": "46299ae3-5a43-436d-9e19-36463cbbe3bd@53b65",
+      "displayName": "",
+      "id": "53b65",
+      "name": "Plane.119.mesh",
+      "userData": {
+        "gltfIndex": 2,
+        "triangleCount": 56
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "fcae9": {
+      "importer": "gltf-mesh",
+      "uuid": "46299ae3-5a43-436d-9e19-36463cbbe3bd@fcae9",
+      "displayName": "",
+      "id": "fcae9",
+      "name": "Plane.122.mesh",
+      "userData": {
+        "gltfIndex": 3,
+        "triangleCount": 68
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "3c307": {
+      "importer": "gltf-mesh",
+      "uuid": "46299ae3-5a43-436d-9e19-36463cbbe3bd@3c307",
+      "displayName": "",
+      "id": "3c307",
+      "name": "Plane.123.mesh",
+      "userData": {
+        "gltfIndex": 4,
+        "triangleCount": 172
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "723da": {
+      "importer": "gltf-mesh",
+      "uuid": "46299ae3-5a43-436d-9e19-36463cbbe3bd@723da",
+      "displayName": "",
+      "id": "723da",
+      "name": "Plane.124.mesh",
+      "userData": {
+        "gltfIndex": 5,
+        "triangleCount": 124
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "a5896": {
+      "importer": "gltf-material",
+      "uuid": "46299ae3-5a43-436d-9e19-36463cbbe3bd@a5896",
+      "displayName": "",
+      "id": "a5896",
+      "name": "T_props.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "01c05": {
+      "importer": "gltf-scene",
+      "uuid": "46299ae3-5a43-436d-9e19-36463cbbe3bd@01c05",
+      "displayName": "",
+      "id": "01c05",
+      "name": "wooden_fence.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "46299ae3-5a43-436d-9e19-36463cbbe3bd@08ccf",
+        "46299ae3-5a43-436d-9e19-36463cbbe3bd@5c2bd",
+        "46299ae3-5a43-436d-9e19-36463cbbe3bd@53b65",
+        "46299ae3-5a43-436d-9e19-36463cbbe3bd@fcae9",
+        "46299ae3-5a43-436d-9e19-36463cbbe3bd@3c307",
+        "46299ae3-5a43-436d-9e19-36463cbbe3bd@723da"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [
+        "46299ae3-5a43-436d-9e19-36463cbbe3bd@a5896"
+      ],
+      "scenes": [
+        "46299ae3-5a43-436d-9e19-36463cbbe3bd@01c05"
+      ]
+    }
+  }
+}

@@ -1,0 +1,240 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9",
+  "files": [],
+  "subMetas": {
+    "faad7": {
+      "importer": "gltf-mesh",
+      "uuid": "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@faad7",
+      "displayName": "",
+      "id": "faad7",
+      "name": "Cylinder.003.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 412
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "41ac8": {
+      "importer": "gltf-mesh",
+      "uuid": "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@41ac8",
+      "displayName": "",
+      "id": "41ac8",
+      "name": "Cube.001.mesh",
+      "userData": {
+        "gltfIndex": 1,
+        "triangleCount": 154
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "c244a": {
+      "importer": "gltf-mesh",
+      "uuid": "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@c244a",
+      "displayName": "",
+      "id": "c244a",
+      "name": "Cylinder.mesh",
+      "userData": {
+        "gltfIndex": 2,
+        "triangleCount": 430
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "2ba06": {
+      "importer": "gltf-mesh",
+      "uuid": "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@2ba06",
+      "displayName": "",
+      "id": "2ba06",
+      "name": "Circle.003.mesh",
+      "userData": {
+        "gltfIndex": 3,
+        "triangleCount": 810
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "c2d4f": {
+      "importer": "gltf-mesh",
+      "uuid": "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@c2d4f",
+      "displayName": "",
+      "id": "c2d4f",
+      "name": "Cube.009.mesh",
+      "userData": {
+        "gltfIndex": 4,
+        "triangleCount": 744
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f710f": {
+      "importer": "gltf-material",
+      "uuid": "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@f710f",
+      "displayName": "",
+      "id": "f710f",
+      "name": "T_weapons.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "ad79e": {
+      "importer": "gltf-material",
+      "uuid": "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@ad79e",
+      "displayName": "",
+      "id": "ad79e",
+      "name": "T_weapons.001.material",
+      "userData": {
+        "gltfIndex": 1
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "b4433": {
+      "importer": "gltf-material",
+      "uuid": "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@b4433",
+      "displayName": "",
+      "id": "b4433",
+      "name": "T_weapons.002.material",
+      "userData": {
+        "gltfIndex": 2
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "b9140": {
+      "importer": "gltf-material",
+      "uuid": "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@b9140",
+      "displayName": "",
+      "id": "b9140",
+      "name": "T_weapons.006.material",
+      "userData": {
+        "gltfIndex": 3
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "6fea2": {
+      "importer": "gltf-material",
+      "uuid": "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@6fea2",
+      "displayName": "",
+      "id": "6fea2",
+      "name": "T_weapons.007.material",
+      "userData": {
+        "gltfIndex": 4
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "464e9": {
+      "importer": "gltf-scene",
+      "uuid": "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@464e9",
+      "displayName": "",
+      "id": "464e9",
+      "name": "weapons_5.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@faad7",
+        "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@41ac8",
+        "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@c244a",
+        "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@2ba06",
+        "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@c2d4f"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [
+        "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@f710f",
+        "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@ad79e",
+        "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@b4433",
+        "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@b9140",
+        "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@6fea2"
+      ],
+      "scenes": [
+        "b0ba3b53-09e4-4c2d-8a2d-6348ce2524a9@464e9"
+      ]
+    }
+  }
+}

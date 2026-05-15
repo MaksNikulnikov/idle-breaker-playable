@@ -1,0 +1,96 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "69b800ff-5fbf-4f6c-b405-4be22a480f92",
+  "files": [],
+  "subMetas": {
+    "41ac8": {
+      "importer": "gltf-mesh",
+      "uuid": "69b800ff-5fbf-4f6c-b405-4be22a480f92@41ac8",
+      "displayName": "",
+      "id": "41ac8",
+      "name": "Cube.001.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 312
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "a5896": {
+      "importer": "gltf-material",
+      "uuid": "69b800ff-5fbf-4f6c-b405-4be22a480f92@a5896",
+      "displayName": "",
+      "id": "a5896",
+      "name": "T_props.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "97dab": {
+      "importer": "gltf-scene",
+      "uuid": "69b800ff-5fbf-4f6c-b405-4be22a480f92@97dab",
+      "displayName": "",
+      "id": "97dab",
+      "name": "sawblade.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "69b800ff-5fbf-4f6c-b405-4be22a480f92@41ac8"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [
+        "69b800ff-5fbf-4f6c-b405-4be22a480f92@a5896"
+      ],
+      "scenes": [
+        "69b800ff-5fbf-4f6c-b405-4be22a480f92@97dab"
+      ]
+    }
+  }
+}

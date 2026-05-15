@@ -1,0 +1,96 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "08442cad-8ac7-4339-9a12-1977cdf31c2a",
+  "files": [],
+  "subMetas": {
+    "46fe8": {
+      "importer": "gltf-mesh",
+      "uuid": "08442cad-8ac7-4339-9a12-1977cdf31c2a@46fe8",
+      "displayName": "",
+      "id": "46fe8",
+      "name": "Cube.159.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 1277
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "a5896": {
+      "importer": "gltf-material",
+      "uuid": "08442cad-8ac7-4339-9a12-1977cdf31c2a@a5896",
+      "displayName": "",
+      "id": "a5896",
+      "name": "T_props.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "9cc54": {
+      "importer": "gltf-scene",
+      "uuid": "08442cad-8ac7-4339-9a12-1977cdf31c2a@9cc54",
+      "displayName": "",
+      "id": "9cc54",
+      "name": "craftBench.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "08442cad-8ac7-4339-9a12-1977cdf31c2a@46fe8"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [
+        "08442cad-8ac7-4339-9a12-1977cdf31c2a@a5896"
+      ],
+      "scenes": [
+        "08442cad-8ac7-4339-9a12-1977cdf31c2a@9cc54"
+      ]
+    }
+  }
+}
