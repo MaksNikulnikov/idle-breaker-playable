@@ -1,0 +1,14 @@
+.git
+.creator
+build
+dist
+library
+node_modules
+profiles
+settings
+temp
+
+assets/art
+assets/**/*.meta
+assets/**/*.scene
+assets/**/*.prefab
