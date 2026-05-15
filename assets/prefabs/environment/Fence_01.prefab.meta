@@ -1,0 +1,15 @@
+{
+    "ver":  "1.1.50",
+    "importer":  "prefab",
+    "imported":  true,
+    "uuid":  "478f7c86-34a9-444b-9fd2-9c9dfe463dce",
+    "files":  [
+                  ".json"
+              ],
+    "subMetas":  {
+
+                 },
+    "userData":  {
+                     "syncNodeName":  "Fence_01"
+                 }
+}

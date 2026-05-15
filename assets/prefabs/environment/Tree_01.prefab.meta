@@ -1,0 +1,15 @@
+{
+    "ver":  "1.1.50",
+    "importer":  "prefab",
+    "imported":  true,
+    "uuid":  "8cee7dd4-a89a-4d38-9a09-bd917e9b8162",
+    "files":  [
+                  ".json"
+              ],
+    "subMetas":  {
+
+                 },
+    "userData":  {
+                     "syncNodeName":  "Tree_01"
+                 }
+}

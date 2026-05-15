@@ -280,6 +280,12 @@
         "_children":  [
                           {
                               "__id__":  8
+                          },
+                          {
+                              "__id__":  33
+                          },
+                          {
+                              "__id__":  49
                           }
                       ],
         "_active":  true,
@@ -1110,5 +1116,1225 @@
     {
         "__type__":  "cc.PostSettingsInfo",
         "_toneMappingType":  0
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Trees",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  7
+                    },
+        "_children":  [
+                          {
+                              "__id__":  34
+                          },
+                          {
+                              "__id__":  39
+                          },
+                          {
+                              "__id__":  44
+                          }
+                      ],
+        "_active":  true,
+        "_components":  [
+
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0,
+                      "w":  1
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  0,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "trees-root"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Tree_01",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  33
+                    },
+        "_children":  [
+                          {
+                              "__id__":  35
+                          }
+                      ],
+        "_active":  true,
+        "_components":  [
+                            {
+                                "__id__":  38
+                            }
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  -4.2,
+                      "y":  0,
+                      "z":  -2.4
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0,
+                      "w":  1
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  0,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "scene-Tree_01"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Model",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  34
+                    },
+        "_children":  [
+
+                      ],
+        "_active":  true,
+        "_components":  [
+                            {
+                                "__id__":  36
+                            }
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0.99999999999999711,
+                      "y":  0,
+                      "z":  0,
+                      "w":  -7.5497901264043109E-08
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  -179.99999134857779,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "scene-Tree_01-model"
+    },
+    {
+        "__type__":  "cc.MeshRenderer",
+        "_name":  "",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "node":  {
+                     "__id__":  35
+                 },
+        "_enabled":  true,
+        "__prefab":  null,
+        "_materials":  [
+                           {
+                               "__uuid__":  "e452aa25-f94e-4d9e-9987-30fe137befbd@6adb9",
+                               "__expectedType__":  "cc.Material"
+                           }
+                       ],
+        "_visFlags":  0,
+        "bakeSettings":  {
+                             "__id__":  37
+                         },
+        "_mesh":  {
+                      "__uuid__":  "25527a0a-60ae-42c4-b962-a7f93fb22e11@67e63",
+                      "__expectedType__":  "cc.Mesh"
+                  },
+        "_shadowCastingMode":  0,
+        "_shadowReceivingMode":  1,
+        "_shadowBias":  0,
+        "_shadowNormalBias":  0,
+        "_reflectionProbeId":  -1,
+        "_reflectionProbeBlendId":  -1,
+        "_reflectionProbeBlendWeight":  0,
+        "_enabledGlobalStandardSkinObject":  false,
+        "_enableMorph":  true,
+        "_id":  "scene-Tree_01-mesh"
+    },
+    {
+        "__type__":  "cc.ModelBakeSettings",
+        "texture":  null,
+        "uvParam":  {
+                        "__type__":  "cc.Vec4",
+                        "x":  0,
+                        "y":  0,
+                        "z":  0,
+                        "w":  0
+                    },
+        "_bakeable":  false,
+        "_castShadow":  false,
+        "_receiveShadow":  false,
+        "_recieveShadow":  false,
+        "_lightmapSize":  64,
+        "_useLightProbe":  false,
+        "_bakeToLightProbe":  true,
+        "_reflectionProbeType":  0,
+        "_bakeToReflectionProbe":  true
+    },
+    {
+        "__type__":  "cc.BoxCollider",
+        "_name":  "",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "node":  {
+                     "__id__":  34
+                 },
+        "_enabled":  true,
+        "__prefab":  null,
+        "_material":  null,
+        "_isTrigger":  false,
+        "_center":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  0,
+                        "y":  0.7,
+                        "z":  0
+                    },
+        "_size":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0.55,
+                      "y":  1.4,
+                      "z":  0.55
+                  },
+        "_id":  "scene-Tree_01-collider"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Tree_02",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  33
+                    },
+        "_children":  [
+                          {
+                              "__id__":  40
+                          }
+                      ],
+        "_active":  true,
+        "_components":  [
+                            {
+                                "__id__":  43
+                            }
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  4.2,
+                      "y":  0,
+                      "z":  -2.6
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0,
+                      "w":  1
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  0,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "scene-Tree_02"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Model",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  39
+                    },
+        "_children":  [
+
+                      ],
+        "_active":  true,
+        "_components":  [
+                            {
+                                "__id__":  41
+                            }
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0.99999999999999711,
+                      "y":  0,
+                      "z":  0,
+                      "w":  -7.5497901264043109E-08
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  -179.99999134857779,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "scene-Tree_02-model"
+    },
+    {
+        "__type__":  "cc.MeshRenderer",
+        "_name":  "",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "node":  {
+                     "__id__":  40
+                 },
+        "_enabled":  true,
+        "__prefab":  null,
+        "_materials":  [
+                           {
+                               "__uuid__":  "e452aa25-f94e-4d9e-9987-30fe137befbd@6adb9",
+                               "__expectedType__":  "cc.Material"
+                           }
+                       ],
+        "_visFlags":  0,
+        "bakeSettings":  {
+                             "__id__":  42
+                         },
+        "_mesh":  {
+                      "__uuid__":  "25527a0a-60ae-42c4-b962-a7f93fb22e11@e2abd",
+                      "__expectedType__":  "cc.Mesh"
+                  },
+        "_shadowCastingMode":  0,
+        "_shadowReceivingMode":  1,
+        "_shadowBias":  0,
+        "_shadowNormalBias":  0,
+        "_reflectionProbeId":  -1,
+        "_reflectionProbeBlendId":  -1,
+        "_reflectionProbeBlendWeight":  0,
+        "_enabledGlobalStandardSkinObject":  false,
+        "_enableMorph":  true,
+        "_id":  "scene-Tree_02-mesh"
+    },
+    {
+        "__type__":  "cc.ModelBakeSettings",
+        "texture":  null,
+        "uvParam":  {
+                        "__type__":  "cc.Vec4",
+                        "x":  0,
+                        "y":  0,
+                        "z":  0,
+                        "w":  0
+                    },
+        "_bakeable":  false,
+        "_castShadow":  false,
+        "_receiveShadow":  false,
+        "_recieveShadow":  false,
+        "_lightmapSize":  64,
+        "_useLightProbe":  false,
+        "_bakeToLightProbe":  true,
+        "_reflectionProbeType":  0,
+        "_bakeToReflectionProbe":  true
+    },
+    {
+        "__type__":  "cc.BoxCollider",
+        "_name":  "",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "node":  {
+                     "__id__":  39
+                 },
+        "_enabled":  true,
+        "__prefab":  null,
+        "_material":  null,
+        "_isTrigger":  false,
+        "_center":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  0,
+                        "y":  0.9,
+                        "z":  0
+                    },
+        "_size":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0.75,
+                      "y":  1.8,
+                      "z":  0.75
+                  },
+        "_id":  "scene-Tree_02-collider"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Tree_03",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  33
+                    },
+        "_children":  [
+                          {
+                              "__id__":  45
+                          }
+                      ],
+        "_active":  true,
+        "_components":  [
+                            {
+                                "__id__":  48
+                            }
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0,
+                      "y":  0,
+                      "z":  -3.1
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0,
+                      "w":  1
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  0,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "scene-Tree_03"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Model",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  44
+                    },
+        "_children":  [
+
+                      ],
+        "_active":  true,
+        "_components":  [
+                            {
+                                "__id__":  46
+                            }
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0.99999999999999711,
+                      "y":  0,
+                      "z":  0,
+                      "w":  -7.5497901264043109E-08
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  -179.99999134857779,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "scene-Tree_03-model"
+    },
+    {
+        "__type__":  "cc.MeshRenderer",
+        "_name":  "",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "node":  {
+                     "__id__":  45
+                 },
+        "_enabled":  true,
+        "__prefab":  null,
+        "_materials":  [
+                           {
+                               "__uuid__":  "e452aa25-f94e-4d9e-9987-30fe137befbd@6adb9",
+                               "__expectedType__":  "cc.Material"
+                           }
+                       ],
+        "_visFlags":  0,
+        "bakeSettings":  {
+                             "__id__":  47
+                         },
+        "_mesh":  {
+                      "__uuid__":  "25527a0a-60ae-42c4-b962-a7f93fb22e11@28ad5",
+                      "__expectedType__":  "cc.Mesh"
+                  },
+        "_shadowCastingMode":  0,
+        "_shadowReceivingMode":  1,
+        "_shadowBias":  0,
+        "_shadowNormalBias":  0,
+        "_reflectionProbeId":  -1,
+        "_reflectionProbeBlendId":  -1,
+        "_reflectionProbeBlendWeight":  0,
+        "_enabledGlobalStandardSkinObject":  false,
+        "_enableMorph":  true,
+        "_id":  "scene-Tree_03-mesh"
+    },
+    {
+        "__type__":  "cc.ModelBakeSettings",
+        "texture":  null,
+        "uvParam":  {
+                        "__type__":  "cc.Vec4",
+                        "x":  0,
+                        "y":  0,
+                        "z":  0,
+                        "w":  0
+                    },
+        "_bakeable":  false,
+        "_castShadow":  false,
+        "_receiveShadow":  false,
+        "_recieveShadow":  false,
+        "_lightmapSize":  64,
+        "_useLightProbe":  false,
+        "_bakeToLightProbe":  true,
+        "_reflectionProbeType":  0,
+        "_bakeToReflectionProbe":  true
+    },
+    {
+        "__type__":  "cc.BoxCollider",
+        "_name":  "",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "node":  {
+                     "__id__":  44
+                 },
+        "_enabled":  true,
+        "__prefab":  null,
+        "_material":  null,
+        "_isTrigger":  false,
+        "_center":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  0,
+                        "y":  0.8,
+                        "z":  0
+                    },
+        "_size":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0.65,
+                      "y":  1.6,
+                      "z":  0.65
+                  },
+        "_id":  "scene-Tree_03-collider"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Fences",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  7
+                    },
+        "_children":  [
+                          {
+                              "__id__":  50
+                          },
+                          {
+                              "__id__":  55
+                          },
+                          {
+                              "__id__":  60
+                          }
+                      ],
+        "_active":  true,
+        "_components":  [
+
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0,
+                      "w":  1
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  0,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "fences-root"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Fence_01",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  49
+                    },
+        "_children":  [
+                          {
+                              "__id__":  51
+                          }
+                      ],
+        "_active":  true,
+        "_components":  [
+                            {
+                                "__id__":  54
+                            }
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  -2.35,
+                      "y":  0,
+                      "z":  2.6
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0,
+                      "w":  1
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  0,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "scene-Fence_01"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Model",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  50
+                    },
+        "_children":  [
+
+                      ],
+        "_active":  true,
+        "_components":  [
+                            {
+                                "__id__":  52
+                            }
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0.70710684079119079,
+                      "y":  0,
+                      "z":  0,
+                      "w":  0.70710672158189924
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  90,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "scene-Fence_01-model"
+    },
+    {
+        "__type__":  "cc.MeshRenderer",
+        "_name":  "",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "node":  {
+                     "__id__":  51
+                 },
+        "_enabled":  true,
+        "__prefab":  null,
+        "_materials":  [
+                           {
+                               "__uuid__":  "e452aa25-f94e-4d9e-9987-30fe137befbd@732fb",
+                               "__expectedType__":  "cc.Material"
+                           }
+                       ],
+        "_visFlags":  0,
+        "bakeSettings":  {
+                             "__id__":  53
+                         },
+        "_mesh":  {
+                      "__uuid__":  "417cbba3-b05d-4a0d-9b32-832184649803@45f73",
+                      "__expectedType__":  "cc.Mesh"
+                  },
+        "_shadowCastingMode":  0,
+        "_shadowReceivingMode":  1,
+        "_shadowBias":  0,
+        "_shadowNormalBias":  0,
+        "_reflectionProbeId":  -1,
+        "_reflectionProbeBlendId":  -1,
+        "_reflectionProbeBlendWeight":  0,
+        "_enabledGlobalStandardSkinObject":  false,
+        "_enableMorph":  true,
+        "_id":  "scene-Fence_01-mesh"
+    },
+    {
+        "__type__":  "cc.ModelBakeSettings",
+        "texture":  null,
+        "uvParam":  {
+                        "__type__":  "cc.Vec4",
+                        "x":  0,
+                        "y":  0,
+                        "z":  0,
+                        "w":  0
+                    },
+        "_bakeable":  false,
+        "_castShadow":  false,
+        "_receiveShadow":  false,
+        "_recieveShadow":  false,
+        "_lightmapSize":  64,
+        "_useLightProbe":  false,
+        "_bakeToLightProbe":  true,
+        "_reflectionProbeType":  0,
+        "_bakeToReflectionProbe":  true
+    },
+    {
+        "__type__":  "cc.BoxCollider",
+        "_name":  "",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "node":  {
+                     "__id__":  50
+                 },
+        "_enabled":  true,
+        "__prefab":  null,
+        "_material":  null,
+        "_isTrigger":  false,
+        "_center":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  0,
+                        "y":  0.58,
+                        "z":  0
+                    },
+        "_size":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  2.2,
+                      "y":  1.18,
+                      "z":  0.32
+                  },
+        "_id":  "scene-Fence_01-collider"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Fence_02",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  49
+                    },
+        "_children":  [
+                          {
+                              "__id__":  56
+                          }
+                      ],
+        "_active":  true,
+        "_components":  [
+                            {
+                                "__id__":  59
+                            }
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0,
+                      "y":  0,
+                      "z":  2.6
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0,
+                      "w":  1
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  0,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "scene-Fence_02"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Model",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  55
+                    },
+        "_children":  [
+
+                      ],
+        "_active":  true,
+        "_components":  [
+                            {
+                                "__id__":  57
+                            }
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0.70710684079119079,
+                      "y":  0,
+                      "z":  0,
+                      "w":  0.70710672158189924
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  90,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "scene-Fence_02-model"
+    },
+    {
+        "__type__":  "cc.MeshRenderer",
+        "_name":  "",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "node":  {
+                     "__id__":  56
+                 },
+        "_enabled":  true,
+        "__prefab":  null,
+        "_materials":  [
+                           {
+                               "__uuid__":  "e452aa25-f94e-4d9e-9987-30fe137befbd@732fb",
+                               "__expectedType__":  "cc.Material"
+                           }
+                       ],
+        "_visFlags":  0,
+        "bakeSettings":  {
+                             "__id__":  58
+                         },
+        "_mesh":  {
+                      "__uuid__":  "417cbba3-b05d-4a0d-9b32-832184649803@53dde",
+                      "__expectedType__":  "cc.Mesh"
+                  },
+        "_shadowCastingMode":  0,
+        "_shadowReceivingMode":  1,
+        "_shadowBias":  0,
+        "_shadowNormalBias":  0,
+        "_reflectionProbeId":  -1,
+        "_reflectionProbeBlendId":  -1,
+        "_reflectionProbeBlendWeight":  0,
+        "_enabledGlobalStandardSkinObject":  false,
+        "_enableMorph":  true,
+        "_id":  "scene-Fence_02-mesh"
+    },
+    {
+        "__type__":  "cc.ModelBakeSettings",
+        "texture":  null,
+        "uvParam":  {
+                        "__type__":  "cc.Vec4",
+                        "x":  0,
+                        "y":  0,
+                        "z":  0,
+                        "w":  0
+                    },
+        "_bakeable":  false,
+        "_castShadow":  false,
+        "_receiveShadow":  false,
+        "_recieveShadow":  false,
+        "_lightmapSize":  64,
+        "_useLightProbe":  false,
+        "_bakeToLightProbe":  true,
+        "_reflectionProbeType":  0,
+        "_bakeToReflectionProbe":  true
+    },
+    {
+        "__type__":  "cc.BoxCollider",
+        "_name":  "",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "node":  {
+                     "__id__":  55
+                 },
+        "_enabled":  true,
+        "__prefab":  null,
+        "_material":  null,
+        "_isTrigger":  false,
+        "_center":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  0,
+                        "y":  0.58,
+                        "z":  0
+                    },
+        "_size":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  2.25,
+                      "y":  1.18,
+                      "z":  0.32
+                  },
+        "_id":  "scene-Fence_02-collider"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Fence_03",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  49
+                    },
+        "_children":  [
+                          {
+                              "__id__":  61
+                          }
+                      ],
+        "_active":  true,
+        "_components":  [
+                            {
+                                "__id__":  64
+                            }
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  2.35,
+                      "y":  0,
+                      "z":  2.6
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0,
+                      "w":  1
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  0,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "scene-Fence_03"
+    },
+    {
+        "__type__":  "cc.Node",
+        "_name":  "Model",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "_parent":  {
+                        "__id__":  60
+                    },
+        "_children":  [
+
+                      ],
+        "_active":  true,
+        "_components":  [
+                            {
+                                "__id__":  62
+                            }
+                        ],
+        "_prefab":  null,
+        "_lpos":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  0,
+                      "y":  0,
+                      "z":  0
+                  },
+        "_lrot":  {
+                      "__type__":  "cc.Quat",
+                      "x":  0.70710684079119079,
+                      "y":  0,
+                      "z":  0,
+                      "w":  0.70710672158189924
+                  },
+        "_lscale":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  1,
+                        "y":  1,
+                        "z":  1
+                    },
+        "_mobility":  0,
+        "_layer":  1073741824,
+        "_euler":  {
+                       "__type__":  "cc.Vec3",
+                       "x":  90,
+                       "y":  0,
+                       "z":  0
+                   },
+        "_id":  "scene-Fence_03-model"
+    },
+    {
+        "__type__":  "cc.MeshRenderer",
+        "_name":  "",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "node":  {
+                     "__id__":  61
+                 },
+        "_enabled":  true,
+        "__prefab":  null,
+        "_materials":  [
+                           {
+                               "__uuid__":  "e452aa25-f94e-4d9e-9987-30fe137befbd@732fb",
+                               "__expectedType__":  "cc.Material"
+                           }
+                       ],
+        "_visFlags":  0,
+        "bakeSettings":  {
+                             "__id__":  63
+                         },
+        "_mesh":  {
+                      "__uuid__":  "417cbba3-b05d-4a0d-9b32-832184649803@c172e",
+                      "__expectedType__":  "cc.Mesh"
+                  },
+        "_shadowCastingMode":  0,
+        "_shadowReceivingMode":  1,
+        "_shadowBias":  0,
+        "_shadowNormalBias":  0,
+        "_reflectionProbeId":  -1,
+        "_reflectionProbeBlendId":  -1,
+        "_reflectionProbeBlendWeight":  0,
+        "_enabledGlobalStandardSkinObject":  false,
+        "_enableMorph":  true,
+        "_id":  "scene-Fence_03-mesh"
+    },
+    {
+        "__type__":  "cc.ModelBakeSettings",
+        "texture":  null,
+        "uvParam":  {
+                        "__type__":  "cc.Vec4",
+                        "x":  0,
+                        "y":  0,
+                        "z":  0,
+                        "w":  0
+                    },
+        "_bakeable":  false,
+        "_castShadow":  false,
+        "_receiveShadow":  false,
+        "_recieveShadow":  false,
+        "_lightmapSize":  64,
+        "_useLightProbe":  false,
+        "_bakeToLightProbe":  true,
+        "_reflectionProbeType":  0,
+        "_bakeToReflectionProbe":  true
+    },
+    {
+        "__type__":  "cc.BoxCollider",
+        "_name":  "",
+        "_objFlags":  0,
+        "__editorExtras__":  {
+
+                             },
+        "node":  {
+                     "__id__":  60
+                 },
+        "_enabled":  true,
+        "__prefab":  null,
+        "_material":  null,
+        "_isTrigger":  false,
+        "_center":  {
+                        "__type__":  "cc.Vec3",
+                        "x":  0,
+                        "y":  0.75,
+                        "z":  0
+                    },
+        "_size":  {
+                      "__type__":  "cc.Vec3",
+                      "x":  2.2,
+                      "y":  1.5,
+                      "z":  0.65
+                  },
+        "_id":  "scene-Fence_03-collider"
     }
 ]
