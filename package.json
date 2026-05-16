@@ -4,6 +4,8 @@
   "scripts": {
     "lint": "eslint --no-error-on-unmatched-pattern \"assets/scripts/**/*.ts\"",
     "lint:fix": "eslint --fix --no-error-on-unmatched-pattern \"assets/scripts/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown"
   },
@@ -14,6 +16,7 @@
     "@eslint/js": "^10.0.1",
     "eslint": "^10.4.0",
     "prettier": "^3.8.3",
-    "typescript-eslint": "^8.59.3"
+    "typescript-eslint": "^8.59.3",
+    "vitest": "^4.1.6"
   }
 }
