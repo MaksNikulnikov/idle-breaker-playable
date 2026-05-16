@@ -31,6 +31,7 @@ The project does not use a separate engine-agnostic simulation layer. That appro
 - `GameState`: current resources, weapon level, upgrade costs, and completion state.
 - `PlayerController`: movement and input handling.
 - `PlayerAnimator`: animation transitions such as idle, run, and hit.
+- `WeaponMount`: visual weapon prefab mounted to the character hand socket for current weapon level.
 - `WeaponHitbox`: short-lived trigger or physics query for melee attacks.
 - `BreakableResource`: destructible resource object with required weapon level and reward.
 - `UpgradeStation`: consumes resources and upgrades the weapon.

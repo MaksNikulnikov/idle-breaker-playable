@@ -32,6 +32,9 @@
       },
       {
         "__id__": 68
+      },
+      {
+        "__id__": 70
       }
     ],
     "_prefab": {
@@ -80,6 +83,9 @@
       },
       {
         "__id__": 55
+      },
+      {
+        "__id__": 72
       }
     ],
     "_active": true,
@@ -1828,7 +1834,15 @@
       "__expectedType__": "cc.AnimationClip"
     },
     "_useBakedAnimation": true,
-    "_sockets": [],
+    "_sockets": [
+      {
+        "__type__": "cc.SkeletalAnimation.Socket",
+        "path": "Armature.001/Hips/Spine/Chest/Shoulder_R/UpperArm_R/LowerArm_R/Hand_R/Weapon_R",
+        "target": {
+          "__id__": 72
+        }
+      }
+    ],
     "_id": ""
   },
   {
@@ -1957,5 +1971,104 @@
   {
     "__type__": "cc.CompPrefabInfo",
     "fileId": "player-controller"
+  },
+  {
+    "__type__": "c7144WQij1EhrtTR1HE1Rx9",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 71
+    },
+    "socket": {
+      "__id__": 72
+    },
+    "levelWeaponPrefabs": [
+      {
+        "__uuid__": "50b9ff69-d82b-4b22-a9a5-f4b4e89a83e0",
+        "__expectedType__": "cc.Prefab"
+      },
+      {
+        "__uuid__": "6fd849c9-9919-4ef6-a4b1-7b84538c8d85",
+        "__expectedType__": "cc.Prefab"
+      },
+      {
+        "__uuid__": "cf27fad6-f358-45c7-adeb-eb066ed53cd8",
+        "__expectedType__": "cc.Prefab"
+      }
+    ],
+    "initialLevel": 1,
+    "weaponLocalPosition": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "weaponLocalEuler": {
+      "__type__": "cc.Vec3",
+      "x": 60,
+      "y": -120,
+      "z": 0
+    },
+    "weaponLocalScale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_id": "",
+    "animationRoot": {
+      "__id__": 2
+    },
+    "jointPath": "Armature.001/Hips/Spine/Chest/Shoulder_R/UpperArm_R/LowerArm_R/Hand_R/Weapon_R"
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "player-weapon-mount"
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "WeaponSocket_R",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "_parent": {
+      "__id__": 2
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [],
+    "_prefab": null,
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 1073741824,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": ""
   }
 ]

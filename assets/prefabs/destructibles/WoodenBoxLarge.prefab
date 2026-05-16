@@ -32,6 +32,9 @@
     "_components": [
       {
         "__id__": 14
+      },
+      {
+        "__id__": 20
       }
     ],
     "_prefab": {
@@ -465,5 +468,39 @@
     "_bakeToLightProbe": true,
     "_reflectionProbeType": 0,
     "_bakeToReflectionProbe": true
+  },
+  {
+    "__type__": "c469dq6drxMUZEs0/ccBgbV",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 21
+    },
+    "resourceId": "",
+    "resourceKind": 0,
+    "requiredWeaponLevel": 1,
+    "rewardAmount": 1,
+    "maxHits": 3,
+    "damageStateNodes": [
+      {
+        "__id__": 2
+      },
+      {
+        "__id__": 6
+      },
+      {
+        "__id__": 10
+      }
+    ],
+    "_id": ""
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "woodenboxlarge-breakable-resource"
   }
 ]
