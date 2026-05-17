@@ -5,6 +5,7 @@
 library/
 temp/
 local/
+project-local/
 build/
 profiles/
 native
