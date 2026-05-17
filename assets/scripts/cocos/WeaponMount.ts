@@ -6,15 +6,18 @@ import {
   Prefab,
   Quat,
   SkeletalAnimation,
+  tween,
+  Tween,
   Vec3,
 } from 'cc';
 
-const { ccclass, property } = _decorator;
+const { ccclass, disallowMultiple, property } = _decorator;
 
 const DEFAULT_RIGHT_HAND_SOCKET_PATH =
   'Armature.001/Hips/Spine/Chest/Shoulder_R/UpperArm_R/LowerArm_R/Hand_R/Weapon_R';
 
 @ccclass('WeaponMount')
+@disallowMultiple
 export class WeaponMount extends Component {
   @property({ type: Node })
   public animationRoot: Node | null = null;
@@ -41,6 +44,8 @@ export class WeaponMount extends Component {
   public weaponLocalScale = new Vec3(1, 1, 1);
 
   private readonly localRotation = new Quat();
+  private readonly appliedWeaponScale = new Vec3(1, 1, 1);
+  private readonly equipFeedback = { scale: 1 };
   private activeWeapon: Node | null = null;
   private animation: SkeletalAnimation | null = null;
   private socketRegistered = false;
@@ -52,14 +57,14 @@ export class WeaponMount extends Component {
 
   public start(): void {
     this.registerSocket();
-    this.equipWeaponLevel(this.initialLevel);
+    this.equipWeaponLevel(this.initialLevel, false);
   }
 
   public lateUpdate(): void {
     this.applyActiveWeaponTransform();
   }
 
-  public equipWeaponLevel(level: number): void {
+  public equipWeaponLevel(level: number, animate = true): void {
     this.registerSocket();
 
     if (this.socket === null || this.levelWeaponPrefabs.length === 0) {
@@ -82,6 +87,17 @@ export class WeaponMount extends Component {
     this.activeWeapon.name = `EquippedWeapon_L${prefabIndex + 1}`;
     this.activeWeapon.setParent(this.socket, false);
     this.applyActiveWeaponTransform();
+
+    if (animate) {
+      this.playEquipFeedback();
+    }
+  }
+
+  public playEquipFeedback(): void {
+    Tween.stopAllByTarget(this.equipFeedback);
+    this.equipFeedback.scale = 1.45;
+
+    tween(this.equipFeedback).to(0.22, { scale: 1 }, { easing: 'backOut' }).start();
   }
 
   private registerSocket(): void {
@@ -118,7 +134,12 @@ export class WeaponMount extends Component {
       this.weaponLocalEuler.z,
     );
     this.activeWeapon.setRotation(this.localRotation);
-    this.activeWeapon.setScale(this.weaponLocalScale);
+    this.appliedWeaponScale.set(
+      this.weaponLocalScale.x * this.equipFeedback.scale,
+      this.weaponLocalScale.y * this.equipFeedback.scale,
+      this.weaponLocalScale.z * this.equipFeedback.scale,
+    );
+    this.activeWeapon.setScale(this.appliedWeaponScale);
   }
 
   private resolveSkeletalAnimation(): SkeletalAnimation | null {
@@ -150,6 +171,9 @@ export class WeaponMount extends Component {
   }
 
   private clearActiveWeapon(): void {
+    Tween.stopAllByTarget(this.equipFeedback);
+    this.equipFeedback.scale = 1;
+
     if (this.activeWeapon !== null && this.activeWeapon.isValid) {
       this.activeWeapon.destroy();
       this.activeWeapon = null;

@@ -20,7 +20,7 @@ import {
   Vec3,
 } from 'cc';
 
-const { ccclass, property } = _decorator;
+const { ccclass, disallowMultiple, property, requireComponent } = _decorator;
 
 export const PLAYER_ATTACK_STARTED_EVENT = 'player-attack-started';
 export const PLAYER_ATTACK_ENDED_EVENT = 'player-attack-ended';
@@ -31,6 +31,8 @@ const JOYSTICK_MAX_DISTANCE = 58;
 const MOUSE_CLICK_DRAG_THRESHOLD = 8;
 
 @ccclass('PlayerController')
+@disallowMultiple
+@requireComponent(RigidBody)
 export class PlayerController extends Component {
   @property
   public moveSpeed = 4.2;

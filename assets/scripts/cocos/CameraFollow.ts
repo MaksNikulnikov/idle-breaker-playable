@@ -1,10 +1,11 @@
 import { _decorator, Component, Node, Vec3 } from 'cc';
 
-const { ccclass, property } = _decorator;
+const { ccclass, disallowMultiple, property } = _decorator;
 
 const MIN_SMOOTH_TIME = 0.001;
 
 @ccclass('CameraFollow')
+@disallowMultiple
 export class CameraFollow extends Component {
   @property({ type: Node })
   public target: Node | null = null;

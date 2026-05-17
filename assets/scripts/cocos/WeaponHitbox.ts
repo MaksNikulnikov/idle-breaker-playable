@@ -9,9 +9,11 @@ import {
 } from './PlayerController';
 import { PlayableGameController } from './PlayableGameController';
 
-const { ccclass, property } = _decorator;
+const { ccclass, disallowMultiple, property, requireComponent } = _decorator;
 
 @ccclass('WeaponHitbox')
+@disallowMultiple
+@requireComponent(Collider)
 export class WeaponHitbox extends Component {
   @property({ type: Collider })
   public hitboxCollider: Collider | null = null;
