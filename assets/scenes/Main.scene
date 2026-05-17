@@ -319,7 +319,11 @@
       }
     ],
     "_active": true,
-    "_components": [],
+    "_components": [
+      {
+        "__id__": 474
+      }
+    ],
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
@@ -367,6 +371,9 @@
     "_components": [
       {
         "__id__": 14
+      },
+      {
+        "__id__": 473
       }
     ],
     "_prefab": null,
@@ -8755,5 +8762,39 @@
   {
     "__type__": "cc.PostSettingsInfo",
     "_toneMappingType": 0
+  },
+  {
+    "__type__": "2ac91ZhMu1ER5na8aRgfZGC",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 10
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "gateId": "ExitGate",
+    "maxHits": 3,
+    "damageStateNodes": [],
+    "_id": "scene-exit-gate-component"
+  },
+  {
+    "__type__": "e0b93amiZ1OBZTPyQVdhRyc",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 9
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "startOnLoad": true,
+    "autoUpgradeWhenAffordable": true,
+    "resources": [],
+    "exitGate": {
+      "__id__": 473
+    },
+    "weaponMount": null,
+    "_id": "gameplay-controller"
   }
 ]

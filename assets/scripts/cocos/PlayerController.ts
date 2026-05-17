@@ -16,6 +16,9 @@ import {
 
 const { ccclass, property } = _decorator;
 
+export const PLAYER_ATTACK_STARTED_EVENT = 'player-attack-started';
+export const PLAYER_ATTACK_ENDED_EVENT = 'player-attack-ended';
+
 const UP = new Vec3(0, 1, 0);
 const MIN_INPUT_LENGTH = 0.05;
 
@@ -110,6 +113,8 @@ export class PlayerController extends Component {
       if (this.attackTimeRemaining > 0) {
         return;
       }
+
+      this.node.emit(PLAYER_ATTACK_ENDED_EVENT);
     }
 
     this.resolveInput();
@@ -186,6 +191,7 @@ export class PlayerController extends Component {
     const safeAttackSpeed = Math.max(0.01, this.attackSpeed);
     this.attackTimeRemaining = this.attackDuration / safeAttackSpeed;
     this.playAnimation(this.attackClip, 0.05, true, safeAttackSpeed, true);
+    this.node.emit(PLAYER_ATTACK_STARTED_EVENT, this.attackTimeRemaining);
   }
 
   private playAnimation(

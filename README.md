@@ -4,6 +4,27 @@ Playable ad prototype built with Cocos Creator 3.8.6 and TypeScript.
 
 The goal is to implement a short, polished gameplay loop: the player starts with a level 1 melee weapon, breaks resource objects, upgrades the weapon, destroys the exit gate at level 3, and triggers the final ad action.
 
+## Playable Scenario Contract
+
+The test task scenario is intentionally narrow. The playable should implement this exact loop:
+
+1. The player starts inside a closed zone with a level 1 melee weapon.
+2. The level 1 weapon can collect only the first resource type.
+3. When enough first-tier resources are collected, the weapon upgrades to level 2.
+4. The level 2 weapon can collect the second resource type.
+5. When enough second-tier resources are collected, the weapon upgrades to level 3.
+6. The level 3 weapon can break the exit gate so the character can escape.
+7. Completion triggers the final playable ad action, such as MRAID/store redirect.
+
+Current production constraints:
+
+- Weapon levels: exactly 3 melee weapon prefabs: `Weapon_Plank`, `Weapon_Pipe`, and `Weapon_Hammer`.
+- Resource kinds: exactly 2 domain resource kinds: `wood` and `metal`.
+- Current level resources: 2 level-1 wood breakables (`WoodenBoxLarge`, `WoodenBoxSmall`) and 2 level-2 breakables (`WoodenFence_01`, `WoodenFence_02`).
+- Destructible prefab variants are allowed to add visual variety, but they must map back to one of the 2 resource kinds.
+- Gate: exactly 1 exit gate, `ExitGate`, unlocked only after weapon level 3.
+- Unused gameplay prefabs and assets should be removed or left unreferenced before production builds to keep the bundle as small as possible.
+
 ## Architecture Direction
 
 This project intentionally uses Cocos Creator as the gameplay runtime, not only as a rendering layer.
@@ -66,5 +87,6 @@ Playable ads are size-sensitive, so implementation should stay practical:
 - Keep physics simple and avoid unnecessary rigid body simulation.
 - Prefer low-cost visual feedback over heavy effects.
 - Compress textures and keep only the assets needed for the playable flow.
+- After a production build, verify whether `weapons_5.fbx` pulls unused weapon submeshes into the bundle. If it does, re-export a trimmed weapons source with only the 3 used weapon levels.
 
 This structure keeps the codebase understandable while matching the test task criteria: Cocos Creator usage, TypeScript quality, responsive interactions, animation-driven feel, visual polish, and a production-minded playable scope.

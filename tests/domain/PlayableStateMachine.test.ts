@@ -44,7 +44,7 @@ describe('PlayableStateMachine', () => {
     expect(snapshot.phase).toBe('intro');
     expect(snapshot.weaponLevel).toBe(1);
     expect(snapshot.inventory).toEqual({ wood: 0, metal: 0 });
-    expect(snapshot.resources).toHaveLength(6);
+    expect(snapshot.resources).toHaveLength(4);
     expect(snapshot.gate).toMatchObject({
       id: 'ExitGate',
       requiredWeaponLevel: 3,
@@ -59,30 +59,31 @@ describe('PlayableStateMachine', () => {
     let state = createInitialPlayableState(DEFAULT_PLAYABLE_CONFIG);
     [state] = step(state, { type: 'start' });
 
-    const [nextState, events] = step(state, { type: 'hitResource', resourceId: 'Metal_01' });
+    const [nextState, events] = step(state, {
+      type: 'hitResource',
+      resourceId: 'WoodenFence_01',
+    });
 
     expect(events).toEqual([
       {
         type: 'resource_locked',
-        resourceId: 'Metal_01',
+        resourceId: 'WoodenFence_01',
         requiredWeaponLevel: 2,
       },
     ]);
     expect(nextState.inventory).toEqual({ wood: 0, metal: 0 });
-    expect(nextState.resources.Metal_01.hitsRemaining).toBe(3);
-    expect(nextState.resources.Metal_01.collected).toBe(false);
+    expect(nextState.resources.WoodenFence_01.hitsRemaining).toBe(3);
+    expect(nextState.resources.WoodenFence_01.collected).toBe(false);
   });
 
   it('collects wood, upgrades to level 2, collects metal, and upgrades to level 3', () => {
     const [state, events] = runCommands(createInitialPlayableState(DEFAULT_PLAYABLE_CONFIG), [
       { type: 'start' },
-      ...hitResource('Wood_01'),
-      ...hitResource('Wood_02'),
-      ...hitResource('Wood_03'),
+      ...hitResource('WoodenBoxLarge'),
+      ...hitResource('WoodenBoxSmall'),
       { type: 'tryUpgrade' },
-      ...hitResource('Metal_01'),
-      ...hitResource('Metal_02'),
-      ...hitResource('Metal_03'),
+      ...hitResource('WoodenFence_01'),
+      ...hitResource('WoodenFence_02'),
       { type: 'tryUpgrade' },
     ]);
 
@@ -93,8 +94,8 @@ describe('PlayableStateMachine', () => {
     expect(events).toContainEqual({ type: 'gate_unlocked', gateId: 'ExitGate' });
     expect(state.weaponLevel).toBe(3);
     expect(state.inventory).toEqual({ wood: 0, metal: 0 });
-    expect(state.resources.Wood_01.collected).toBe(true);
-    expect(state.resources.Metal_01.collected).toBe(true);
+    expect(state.resources.WoodenBoxLarge.collected).toBe(true);
+    expect(state.resources.WoodenFence_01.collected).toBe(true);
   });
 
   it('blocks gate before level 3 and completes playable after destroying it', () => {
@@ -113,13 +114,11 @@ describe('PlayableStateMachine', () => {
     expect(lockedState.gate.hitsRemaining).toBe(3);
 
     const [completedState, completionEvents] = runCommands(lockedState, [
-      ...hitResource('Wood_01'),
-      ...hitResource('Wood_02'),
-      ...hitResource('Wood_03'),
+      ...hitResource('WoodenBoxLarge'),
+      ...hitResource('WoodenBoxSmall'),
       { type: 'tryUpgrade' },
-      ...hitResource('Metal_01'),
-      ...hitResource('Metal_02'),
-      ...hitResource('Metal_03'),
+      ...hitResource('WoodenFence_01'),
+      ...hitResource('WoodenFence_02'),
       { type: 'tryUpgrade' },
       ...hitGate(),
     ]);
@@ -137,19 +136,22 @@ describe('PlayableStateMachine', () => {
   it('returns new state objects without mutating previous states', () => {
     const initialState = createInitialPlayableState(DEFAULT_PLAYABLE_CONFIG);
     const [playingState] = step(initialState, { type: 'start' });
-    const [hitState] = step(playingState, { type: 'hitResource', resourceId: 'Wood_01' });
+    const [hitState] = step(playingState, {
+      type: 'hitResource',
+      resourceId: 'WoodenBoxLarge',
+    });
 
     expect(initialState.phase).toBe('intro');
-    expect(initialState.resources.Wood_01.hitsRemaining).toBe(3);
+    expect(initialState.resources.WoodenBoxLarge.hitsRemaining).toBe(3);
     expect(playingState.phase).toBe('playing');
-    expect(playingState.resources.Wood_01.hitsRemaining).toBe(3);
-    expect(hitState.resources.Wood_01.hitsRemaining).toBe(2);
+    expect(playingState.resources.WoodenBoxLarge.hitsRemaining).toBe(3);
+    expect(hitState.resources.WoodenBoxLarge.hitsRemaining).toBe(2);
   });
 
   it('resets progression back to the initial state', () => {
     const [progressState] = runCommands(createInitialPlayableState(DEFAULT_PLAYABLE_CONFIG), [
       { type: 'start' },
-      ...hitResource('Wood_01'),
+      ...hitResource('WoodenBoxLarge'),
     ]);
 
     const [resetState, events] = step(progressState, { type: 'reset' });
@@ -157,7 +159,7 @@ describe('PlayableStateMachine', () => {
     expect(events).toEqual([{ type: 'game_reset' }]);
     expect(resetState.phase).toBe('intro');
     expect(resetState.inventory).toEqual({ wood: 0, metal: 0 });
-    expect(resetState.resources.Wood_01).toMatchObject({
+    expect(resetState.resources.WoodenBoxLarge).toMatchObject({
       hitsRemaining: 3,
       collected: false,
     });
