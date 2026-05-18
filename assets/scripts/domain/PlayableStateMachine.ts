@@ -85,6 +85,8 @@ export function createPlayableSnapshot(
   return {
     phase: state.phase,
     inventory: { ...state.inventory },
+    collectedTotals: getCollectedTotals(state, config),
+    totalRewards: getResourceTargets(config),
     weaponLevel: state.weaponLevel,
     resources: config.resources.map((resource) => cloneResource(state.resources[resource.id])),
     gate: cloneGate(state.gate),
@@ -153,9 +155,12 @@ function hitResource(
   }
 
   resource.hitsRemaining = Math.max(0, resource.hitsRemaining - 1);
+  state.inventory[resource.kind] += resource.rewardAmount;
   events.push({
     type: 'resource_hit',
     resourceId,
+    kind: resource.kind,
+    rewardAmount: resource.rewardAmount,
     hitsRemaining: resource.hitsRemaining,
   });
 
@@ -164,12 +169,11 @@ function hitResource(
   }
 
   resource.collected = true;
-  state.inventory[resource.kind] += resource.rewardAmount;
   events.push({
     type: 'resource_collected',
     resourceId,
     kind: resource.kind,
-    rewardAmount: resource.rewardAmount,
+    rewardAmount: 0,
   });
 
   const nextWeaponLevel = getNextWeaponLevel(state.weaponLevel);
@@ -252,6 +256,44 @@ function cloneState(state: PlayableState): PlayableState {
     weaponLevel: state.weaponLevel,
     resources,
     gate: cloneGate(state.gate),
+  };
+}
+
+function getCollectedTotals(state: PlayableState, config: PlayableConfig): Inventory {
+  const totals: Inventory = { ...EMPTY_INVENTORY };
+
+  for (const resource of config.resources) {
+    const stateResource = state.resources[resource.id];
+
+    if (stateResource === undefined) {
+      continue;
+    }
+
+    totals[resource.kind] +=
+      (stateResource.maxHits - stateResource.hitsRemaining) * stateResource.rewardAmount;
+  }
+
+  return totals;
+}
+
+function getResourceTargets(config: PlayableConfig): Inventory {
+  const targets: Inventory = { ...EMPTY_INVENTORY };
+
+  for (const targetLevel of [2, 3] as const) {
+    const cost = config.upgradeCosts[targetLevel];
+    targets.wood = Math.max(targets.wood, cost.wood ?? 0);
+    targets.metal = Math.max(targets.metal, cost.metal ?? 0);
+  }
+
+  const sceneTotals: Inventory = { ...EMPTY_INVENTORY };
+
+  for (const resource of config.resources) {
+    sceneTotals[resource.kind] += resource.maxHits * resource.rewardAmount;
+  }
+
+  return {
+    wood: targets.wood > 0 ? targets.wood : sceneTotals.wood,
+    metal: targets.metal > 0 ? targets.metal : sceneTotals.metal,
   };
 }
 

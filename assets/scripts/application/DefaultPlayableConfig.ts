@@ -3,28 +3,28 @@ import type { PlayableConfig } from '../domain';
 export const DEFAULT_PLAYABLE_CONFIG: PlayableConfig = {
   resources: [
     {
-      id: 'WoodenBoxLarge',
-      kind: 'wood',
-      requiredWeaponLevel: 1,
-      rewardAmount: 1,
-      maxHits: 3,
-    },
-    {
-      id: 'WoodenBoxSmall',
-      kind: 'wood',
-      requiredWeaponLevel: 1,
-      rewardAmount: 1,
-      maxHits: 3,
-    },
-    {
       id: 'WoodenFence_01',
+      kind: 'wood',
+      requiredWeaponLevel: 1,
+      rewardAmount: 1,
+      maxHits: 3,
+    },
+    {
+      id: 'WoodenFence_02',
+      kind: 'wood',
+      requiredWeaponLevel: 1,
+      rewardAmount: 1,
+      maxHits: 3,
+    },
+    {
+      id: 'WoodenBoxLarge',
       kind: 'metal',
       requiredWeaponLevel: 2,
       rewardAmount: 1,
       maxHits: 3,
     },
     {
-      id: 'WoodenFence_02',
+      id: 'WoodenBoxSmall',
       kind: 'metal',
       requiredWeaponLevel: 2,
       rewardAmount: 1,
@@ -37,7 +37,7 @@ export const DEFAULT_PLAYABLE_CONFIG: PlayableConfig = {
     maxHits: 3,
   },
   upgradeCosts: {
-    2: { wood: 2 },
-    3: { metal: 2 },
+    2: { wood: 6 },
+    3: { metal: 6 },
   },
 };

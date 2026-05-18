@@ -10,17 +10,22 @@ The test task scenario is intentionally narrow. The playable should implement th
 
 1. The player starts inside a closed zone with a level 1 melee weapon.
 2. The level 1 weapon can collect only the first resource type.
-3. When enough first-tier resources are collected, the weapon upgrades to level 2.
-4. The level 2 weapon can collect the second resource type.
-5. When enough second-tier resources are collected, the weapon upgrades to level 3.
-6. The level 3 weapon can break the exit gate so the character can escape.
-7. Completion triggers the final playable ad action, such as MRAID/store redirect.
+3. When enough first-tier resources are collected, the workbench upgrade zone becomes active.
+4. Entering the active workbench zone consumes the required resources and upgrades the weapon to level 2.
+5. The level 2 weapon can collect the second resource type.
+6. When enough second-tier resources are collected, the workbench upgrade zone becomes active again.
+7. Entering the active workbench zone consumes the required resources and upgrades the weapon to level 3.
+8. The level 3 weapon can break the exit gate so the character can escape.
+9. Completion triggers the final playable ad action, such as MRAID/store redirect.
 
 Current production constraints:
 
 - Weapon levels: exactly 3 melee weapon prefabs: `Weapon_Plank`, `Weapon_Pipe`, and `Weapon_Hammer`.
 - Resource kinds: exactly 2 domain resource kinds: `wood` and `metal`.
-- Current level resources: 2 level-1 wood breakables (`WoodenBoxLarge`, `WoodenBoxSmall`) and 2 level-2 breakables (`WoodenFence_01`, `WoodenFence_02`).
+- Upgrade costs: level 2 requires 6 wood, level 3 requires 6 metal.
+- Scene breakables are discovered from `BreakableResource` components at runtime, so designers can add more authored breakable prefab instances without code changes.
+- Required upgrade amounts are intentionally independent from the total resources placed in the scene. For example, the scene can contain 4 wood-producing fences while the level-2 upgrade still requires only 6 wood.
+- Current production resource mapping: wood comes from fence breakables at weapon level 1, metal comes from box breakables at weapon level 2.
 - Destructible prefab variants are allowed to add visual variety, but they must map back to one of the 2 resource kinds.
 - Gate: exactly 1 exit gate, `ExitGate`, unlocked only after weapon level 3.
 - Unused gameplay prefabs and assets should be removed or left unreferenced before production builds to keep the bundle as small as possible.
@@ -77,6 +82,18 @@ The ESLint configuration also enforces one architecture boundary:
 - `assets/scripts/application/**` must not import from `cc`.
 
 Scene-facing Cocos APIs should stay in components/adapters, for example under `assets/scripts/cocos/**`. Domain and application code should stay focused on gameplay progression and rules, which makes it easier to test and reason about without duplicating Cocos physics or rendering.
+
+## Production Build
+
+The shared Cocos build configuration is stored at `buildConfig_web-mobile.json`.
+
+Build from the command line with Cocos Creator 3.8.6:
+
+```powershell
+& 'C:\ProgramData\cocos\editors\Creator\3.8.6\CocosCreator.exe' --project . --build 'configPath=./buildConfig_web-mobile.json'
+```
+
+In the Cocos Build panel, use this file via the import/export build config controls. The editor stores its last local Build panel state under `profiles/`, which is intentionally ignored; `buildConfig_web-mobile.json` is the project-owned source of truth.
 
 ## Optimization Notes
 

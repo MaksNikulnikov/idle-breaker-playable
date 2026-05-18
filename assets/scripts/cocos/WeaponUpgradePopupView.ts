@@ -26,10 +26,21 @@ export class WeaponUpgradePopupView extends Component {
   @property({ type: Sprite })
   public weaponIconSprite: Sprite | null = null;
 
+  @property({ type: Sprite })
+  public powerIconSprite: Sprite | null = null;
+
+  @property({ type: Label })
+  public powerLabel: Label | null = null;
+
   @property({ type: [SpriteFrame] })
   public weaponIconFrames: SpriteFrame[] = [];
 
-  public applyContent(level: number, weaponName: string, unlockText: string): void {
+  public applyContent(
+    level: number,
+    weaponName: string,
+    unlockText: string,
+    powerBonus: number,
+  ): void {
     if (this.weaponNameLabel !== null) {
       this.weaponNameLabel.string = weaponName;
     }
@@ -40,6 +51,10 @@ export class WeaponUpgradePopupView extends Component {
 
     if (this.unlockLabel !== null) {
       this.unlockLabel.string = unlockText;
+    }
+
+    if (this.powerLabel !== null) {
+      this.powerLabel.string = `+ ${powerBonus}`;
     }
   }
 
@@ -81,6 +96,8 @@ export class WeaponUpgradePopupView extends Component {
       this.unlockLabel !== null &&
       this.weaponIconRoot !== null &&
       this.getWeaponIconSprite() !== null &&
+      this.powerIconSprite !== null &&
+      this.powerLabel !== null &&
       this.weaponIconFrames.length > 0
     );
   }

@@ -1,4 +1,4 @@
-import { _decorator, Collider, Component, Node, tween, Tween, Vec3 } from 'cc';
+import { _decorator, Collider, Component, Node, Prefab, tween, Tween, Vec3 } from 'cc';
 
 const { ccclass, disallowMultiple, property, requireComponent } = _decorator;
 
@@ -17,6 +17,9 @@ export class ExitGate extends Component {
 
   @property
   public feedbackHeight = 2.5;
+
+  @property({ type: Prefab })
+  public targetHintPrefab: Prefab | null = null;
 
   private collider: Collider | null = null;
   private readonly baseScale = new Vec3(1, 1, 1);
@@ -42,6 +45,36 @@ export class ExitGate extends Component {
 
     out.y += this.feedbackHeight;
     return out;
+  }
+
+  public getHitWorldPosition(out: Vec3 = new Vec3()): Vec3 {
+    this.node.getWorldPosition(out);
+
+    const bounds = this.collider?.worldBounds ?? null;
+
+    if (bounds !== null) {
+      out.set(bounds.center.x, bounds.center.y + 1.05, bounds.center.z);
+    }
+
+    return out;
+  }
+
+  public getTargetHintWorldBounds(outCenter: Vec3, outSize: Vec3): void {
+    this.node.getWorldPosition(outCenter);
+    outSize.set(1, 1, 1);
+
+    const bounds = this.collider?.worldBounds ?? null;
+
+    if (bounds === null) {
+      return;
+    }
+
+    outCenter.set(bounds.center.x, 0, bounds.center.z);
+    outSize.set(bounds.halfExtents.x * 2, bounds.halfExtents.y * 2, bounds.halfExtents.z * 2);
+  }
+
+  public getTargetHintPrefab(): Prefab | null {
+    return this.targetHintPrefab;
   }
 
   public showDamageStage(stageIndex: number): void {

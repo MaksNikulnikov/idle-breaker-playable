@@ -56,6 +56,9 @@ export class PlayerController extends Component {
   public attackSpeed = 2.4;
 
   @property
+  public attackLockDuration = 1;
+
+  @property
   public touchDeadZone = 10;
 
   @property
@@ -100,6 +103,24 @@ export class PlayerController extends Component {
   private moveRight = false;
   private moveForward = false;
   private moveBackward = false;
+  private browserPointerReleaseTimer = 0;
+  private browserSafetyHooksBound = false;
+
+  private readonly resetInputOnBrowserBlur = (): void => {
+    this.resetInputState();
+  };
+
+  private readonly deferPointerReleaseReset = (): void => {
+    if (this.browserPointerReleaseTimer !== 0) {
+      return;
+    }
+
+    this.browserPointerReleaseTimer = window.setTimeout(() => {
+      this.browserPointerReleaseTimer = 0;
+      this.resetPointerInput();
+      this.resetMouseInput();
+    }, 0);
+  };
 
   public onLoad(): void {
     this.rigidBody = this.getComponent(RigidBody);
@@ -124,6 +145,7 @@ export class PlayerController extends Component {
     game.on(Game.EVENT_HIDE, this.resetInputState, this);
     game.on(Game.EVENT_SHOW, this.resetInputState, this);
     this.inputSurface?.on(Node.EventType.MOUSE_LEAVE, this.onMouseLeave, this);
+    this.bindBrowserSafetyHooks();
   }
 
   public onDisable(): void {
@@ -139,6 +161,7 @@ export class PlayerController extends Component {
     game.off(Game.EVENT_HIDE, this.resetInputState, this);
     game.off(Game.EVENT_SHOW, this.resetInputState, this);
     this.inputSurface?.off(Node.EventType.MOUSE_LEAVE, this.onMouseLeave, this);
+    this.unbindBrowserSafetyHooks();
     this.resetInputState();
   }
 
@@ -169,6 +192,19 @@ export class PlayerController extends Component {
     this.move(this.inputVector.x, -this.inputVector.y, deltaTime);
     this.rotateVisual(deltaTime);
     this.playLocomotionAnimation(this.runClip);
+  }
+
+  public hasActiveGameplayInput(): boolean {
+    return (
+      this.attackTimeRemaining > 0 ||
+      this.touchActive ||
+      this.mousePressed ||
+      this.moveLeft ||
+      this.moveRight ||
+      this.moveForward ||
+      this.moveBackward ||
+      this.inputVector.lengthSqr() > MIN_INPUT_LENGTH * MIN_INPUT_LENGTH
+    );
   }
 
   private resolveInput(): void {
@@ -228,7 +264,8 @@ export class PlayerController extends Component {
     }
 
     const safeAttackSpeed = Math.max(0.01, this.attackSpeed);
-    this.attackTimeRemaining = this.attackDuration / safeAttackSpeed;
+    const animationRuntime = this.attackDuration / safeAttackSpeed;
+    this.attackTimeRemaining = Math.max(animationRuntime, this.attackLockDuration);
     this.playAnimation(this.attackClip, 0.05, true, safeAttackSpeed, true);
     this.node.emit(PLAYER_ATTACK_STARTED_EVENT, this.attackTimeRemaining);
   }
@@ -495,6 +532,44 @@ export class PlayerController extends Component {
 
   private shouldUseTouchJoystick(): boolean {
     return sys.isMobile || this.touchJoystickOnDesktop;
+  }
+
+  private bindBrowserSafetyHooks(): void {
+    if (this.browserSafetyHooksBound || !sys.isBrowser) {
+      return;
+    }
+
+    window.addEventListener('blur', this.resetInputOnBrowserBlur);
+    window.addEventListener('pagehide', this.resetInputOnBrowserBlur);
+    window.addEventListener('pointerup', this.deferPointerReleaseReset);
+    window.addEventListener('pointercancel', this.deferPointerReleaseReset);
+    window.addEventListener('mouseup', this.deferPointerReleaseReset);
+    window.addEventListener('touchend', this.deferPointerReleaseReset);
+    window.addEventListener('touchcancel', this.deferPointerReleaseReset);
+    document.addEventListener('visibilitychange', this.resetInputOnBrowserBlur);
+    this.browserSafetyHooksBound = true;
+  }
+
+  private unbindBrowserSafetyHooks(): void {
+    if (!this.browserSafetyHooksBound || !sys.isBrowser) {
+      return;
+    }
+
+    window.removeEventListener('blur', this.resetInputOnBrowserBlur);
+    window.removeEventListener('pagehide', this.resetInputOnBrowserBlur);
+    window.removeEventListener('pointerup', this.deferPointerReleaseReset);
+    window.removeEventListener('pointercancel', this.deferPointerReleaseReset);
+    window.removeEventListener('mouseup', this.deferPointerReleaseReset);
+    window.removeEventListener('touchend', this.deferPointerReleaseReset);
+    window.removeEventListener('touchcancel', this.deferPointerReleaseReset);
+    document.removeEventListener('visibilitychange', this.resetInputOnBrowserBlur);
+
+    if (this.browserPointerReleaseTimer !== 0) {
+      window.clearTimeout(this.browserPointerReleaseTimer);
+      this.browserPointerReleaseTimer = 0;
+    }
+
+    this.browserSafetyHooksBound = false;
   }
 
   private resetPointerInput(): void {

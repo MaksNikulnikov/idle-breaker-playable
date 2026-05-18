@@ -52,6 +52,8 @@ export interface PlayableState {
 export interface PlayableSnapshot {
   phase: PlayablePhase;
   inventory: Inventory;
+  collectedTotals: Inventory;
+  totalRewards: Inventory;
   weaponLevel: WeaponLevel;
   resources: ResourceState[];
   gate: GateState;
@@ -73,7 +75,13 @@ export type UpgradeBlockReason = 'not_playing' | 'max_level' | 'missing_resource
 export type GameEvent =
   | { type: 'game_started' }
   | { type: 'game_reset' }
-  | { type: 'resource_hit'; resourceId: string; hitsRemaining: number }
+  | {
+      type: 'resource_hit';
+      resourceId: string;
+      kind: ResourceKind;
+      rewardAmount: number;
+      hitsRemaining: number;
+    }
   | { type: 'resource_collected'; resourceId: string; kind: ResourceKind; rewardAmount: number }
   | { type: 'resource_locked'; resourceId: string; requiredWeaponLevel: WeaponLevel }
   | { type: 'upgrade_available'; targetLevel: UpgradeTargetLevel }

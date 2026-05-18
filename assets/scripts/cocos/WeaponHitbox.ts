@@ -25,10 +25,10 @@ export class WeaponHitbox extends Component {
   public playerController: PlayerController | null = null;
 
   @property
-  public activationDelay = 0.12;
+  public activationDelay = 0.5;
 
   @property
-  public activeSeconds = 0.45;
+  public activeSeconds = 0.32;
 
   private collider: Collider | null = null;
   private activeTimeRemaining = 0;

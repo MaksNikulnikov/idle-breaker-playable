@@ -482,8 +482,8 @@
       "__id__": 21
     },
     "resourceId": "",
-    "resourceKind": 0,
-    "requiredWeaponLevel": 1,
+    "resourceKind": 1,
+    "requiredWeaponLevel": 2,
     "rewardAmount": 1,
     "maxHits": 3,
     "damageStateNodes": [
@@ -497,7 +497,11 @@
         "__id__": 10
       }
     ],
-    "_id": ""
+    "_id": "",
+    "targetHintPrefab": {
+      "__uuid__": "f36c5c8d-4bd5-4a81-bf6f-6a1e7e3f1f87",
+      "__expectedType__": "cc.Prefab"
+    }
   },
   {
     "__type__": "cc.CompPrefabInfo",
