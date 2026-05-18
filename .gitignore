@@ -11,6 +11,10 @@ build/*
 !build/web-mobile/**
 profiles/
 native
+!build/web-mobile/assets/
+!build/web-mobile/assets/**/
+!build/web-mobile/assets/**/native/
+!build/web-mobile/assets/**/native/**
 #//////////////////////////
 # NPM
 #//////////////////////////
