@@ -150,7 +150,7 @@
     "_illuminanceHDR": 72000,
     "_illuminance": 72000,
     "_illuminanceLDR": 1.875,
-    "_shadowEnabled": false,
+    "_shadowEnabled": true,
     "_shadowPcf": 0,
     "_shadowBias": 0.00001,
     "_shadowNormalBias": 0,
@@ -173,7 +173,7 @@
     "__type__": "cc.StaticLightSettings",
     "_baked": false,
     "_editorOnly": false,
-    "_castShadow": false
+    "_castShadow": true
   },
   {
     "__type__": "cc.Node",
@@ -485,7 +485,7 @@
       "__uuid__": "f9074f51-307a-43ed-b567-e0ca162d6110@32996",
       "__expectedType__": "cc.Mesh"
     },
-    "_shadowCastingMode": 0,
+    "_shadowCastingMode": 1,
     "_shadowReceivingMode": 1,
     "_shadowBias": 0,
     "_shadowNormalBias": 0,
@@ -1617,7 +1617,9 @@
     "targetHintIdleDelay": 3,
     "initialTargetHintIdleDelay": 2,
     "storeUrl": "https://play.google.com/store",
-    "openStoreAutomaticallyOnCompletion": false,
+    "openStoreAutomaticallyOnCompletion": true,
+    "completionStoreOpenDelay": 3,
+    "lockPlayerOnCompletion": true,
     "storeButton": {
       "__id__": 149
     },
@@ -6678,7 +6680,7 @@
       "__uuid__": "7a8be5e1-e95f-4e9e-85ef-79a797b8e2d1@e1cf9",
       "__expectedType__": "cc.Mesh"
     },
-    "_shadowCastingMode": 0,
+    "_shadowCastingMode": 1,
     "_shadowReceivingMode": 1,
     "_shadowBias": 0,
     "_shadowNormalBias": 0,
@@ -13723,7 +13725,7 @@
       "__uuid__": "08442cad-8ac7-4339-9a12-1977cdf31c2a@46fe8",
       "__expectedType__": "cc.Mesh"
     },
-    "_shadowCastingMode": 0,
+    "_shadowCastingMode": 1,
     "_shadowReceivingMode": 1,
     "_shadowBias": 0,
     "_shadowNormalBias": 0,
@@ -14071,7 +14073,7 @@
   },
   {
     "__type__": "cc.ShadowsInfo",
-    "_enabled": false,
+    "_enabled": true,
     "_type": 0,
     "_normal": {
       "__type__": "cc.Vec3",

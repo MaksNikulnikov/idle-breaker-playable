@@ -42,6 +42,16 @@ For a playable ad, the best tradeoff is a lightweight component architecture:
 
 The project does not use a separate engine-agnostic simulation layer. That approach would add complexity and duplicate features already provided by Cocos, such as collision detection, trigger zones, scene hierarchy, prefab contracts, and animation playback. For this scope, the priority is playability, responsiveness, production speed, and a small build.
 
+The architecture should follow SOLID within the practical limits of a playable ad:
+
+- Single Responsibility: scene components own focused behavior such as input, movement, animation, progression, feedback, or ad completion.
+- Open/Closed: new feedback effects, objectives, resource visuals, or store actions should be added through components and configuration rather than by expanding a central controller.
+- Liskov Substitution: scene-facing contracts should allow one feedback/ad/input implementation to be replaced by another without changing gameplay rules.
+- Interface Segregation: components should depend on the narrow capability they need, not on large all-purpose controllers.
+- Dependency Inversion: domain/application code stays independent from `cc`, while Cocos components adapt scene objects, prefabs, colliders, and UI to those rules.
+
+`PlayableGameController` should act as a composition root and orchestration boundary, not as a long-term home for UI effects, target selection, ad flow, resource discovery, and player control. Refactoring work should move those responsibilities into focused collaborators while keeping inspector-assigned references and prefab contracts easy to understand.
+
 ## Gameplay Implementation Principles
 
 - Use colliders and triggers for spatial interactions instead of manually checking distances or overlap rectangles in game code.

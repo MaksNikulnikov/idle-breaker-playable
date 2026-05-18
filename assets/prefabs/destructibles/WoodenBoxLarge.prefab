@@ -142,7 +142,7 @@
       "__uuid__": "e452aa25-f94e-4d9e-9987-30fe137befbd@f051b",
       "__expectedType__": "cc.Mesh"
     },
-    "_shadowCastingMode": 0,
+    "_shadowCastingMode": 1,
     "_shadowReceivingMode": 1,
     "_shadowBias": 0,
     "_shadowNormalBias": 0,
@@ -241,7 +241,7 @@
       "__uuid__": "e452aa25-f94e-4d9e-9987-30fe137befbd@17dd0",
       "__expectedType__": "cc.Mesh"
     },
-    "_shadowCastingMode": 0,
+    "_shadowCastingMode": 1,
     "_shadowReceivingMode": 1,
     "_shadowBias": 0,
     "_shadowNormalBias": 0,
@@ -340,7 +340,7 @@
       "__uuid__": "e452aa25-f94e-4d9e-9987-30fe137befbd@b45a1",
       "__expectedType__": "cc.Mesh"
     },
-    "_shadowCastingMode": 0,
+    "_shadowCastingMode": 1,
     "_shadowReceivingMode": 1,
     "_shadowBias": 0,
     "_shadowNormalBias": 0,

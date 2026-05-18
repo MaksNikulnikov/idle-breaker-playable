@@ -1,14 +1,4 @@
-import {
-  _decorator,
-  Collider,
-  Color,
-  Component,
-  director,
-  ITriggerEvent,
-  Node,
-  Prefab,
-  Vec3,
-} from 'cc';
+import { _decorator, Collider, Color, Component, director, ITriggerEvent, Node, Vec3 } from 'cc';
 
 import { DEFAULT_PLAYABLE_CONFIG, openStoreUrl } from '../application';
 import {
@@ -27,6 +17,7 @@ import { BreakableResource, ResourceKind as CocosResourceKind } from './Breakabl
 import { ExitGate } from './ExitGate';
 import { PlayableFeedbackView } from './PlayableFeedbackView';
 import { PlayableHudView } from './PlayableHudView';
+import { PlayableTargetHintController } from './PlayableTargetHintController';
 import { PlayerController } from './PlayerController';
 import { WeaponMount } from './WeaponMount';
 
@@ -36,17 +27,9 @@ export const PLAYABLE_STATE_CHANGED_EVENT = 'playable-state-changed';
 export const PLAYABLE_EVENTS_EVENT = 'playable-events';
 
 type RewardKind = 'wood' | 'metal';
-type TargetHintCandidate = {
-  key: string;
-  objectiveKey: string;
-  useWorldBounds: boolean;
-  prefab: Prefab | null;
-};
 
 const TMP_VEC3_A = new Vec3();
 const TMP_VEC3_B = new Vec3();
-const TMP_VEC3_C = new Vec3();
-const TMP_VEC3_D = new Vec3();
 
 @ccclass('PlayableGameController')
 @disallowMultiple
@@ -82,7 +65,13 @@ export class PlayableGameController extends Component {
   public storeUrl = 'https://play.google.com/store';
 
   @property
-  public openStoreAutomaticallyOnCompletion = false;
+  public openStoreAutomaticallyOnCompletion = true;
+
+  @property
+  public completionStoreOpenDelay = 3;
+
+  @property
+  public lockPlayerOnCompletion = true;
 
   @property({ type: Node })
   public storeButton: Node | null = null;
@@ -97,11 +86,20 @@ export class PlayableGameController extends Component {
   private playerController: PlayerController | null = null;
   private boundUpgradeStationTrigger: Collider | null = null;
   private boundStoreButton: Node | null = null;
-  private targetHintCooldownRemaining = 0;
-  private targetHintObjectiveKey = '';
-  private targetHintTargetKey = '';
-  private targetHintShownOnce = false;
   private completionAdActionTriggered = false;
+  private completionStoreOpenScheduled = false;
+  private readonly handleScheduledStoreOpen = (): void => {
+    this.completionStoreOpenScheduled = false;
+    this.openStore();
+  };
+  private readonly targetHints = new PlayableTargetHintController({
+    getFeedbackView: () => this.feedbackView,
+    getResources: () => this.resolveResources(),
+    getExitGate: () => this.resolveExitGate(),
+    getPlayer: () => this.resolvePlayerController(),
+    getIdleDelay: () => this.targetHintIdleDelay,
+    getInitialIdleDelay: () => this.initialTargetHintIdleDelay,
+  });
 
   public onEnable(): void {
     this.bindUpgradeStationTrigger();
@@ -109,6 +107,7 @@ export class PlayableGameController extends Component {
   }
 
   public onDisable(): void {
+    this.clearScheduledStoreOpen();
     this.unbindUpgradeStationTrigger();
     this.unbindStoreButton();
   }
@@ -121,9 +120,9 @@ export class PlayableGameController extends Component {
     this.feedbackView?.refreshLayout();
     this.feedbackView?.prewarmTransientEffects();
     this.feedbackView?.warmupTransientRenderers();
-    this.prewarmTargetHints();
+    this.targetHints.prewarm();
     this.state = createInitialPlayableState(this.config);
-    this.armInitialTargetHintDelay();
+    this.targetHints.armInitialDelay();
     const snapshot = this.refreshSnapshot();
     this.applySnapshot(snapshot);
     this.syncFeedbackState(snapshot);
@@ -139,7 +138,7 @@ export class PlayableGameController extends Component {
   public update(deltaTime: number): void {
     this.feedbackView?.refreshLayoutIfNeeded();
     this.updateFeedback(deltaTime);
-    this.updateTargetHint(deltaTime);
+    this.targetHints.update(deltaTime, this.getSnapshot());
   }
 
   public getSnapshot(): PlayableSnapshot {
@@ -164,6 +163,8 @@ export class PlayableGameController extends Component {
       return;
     }
 
+    this.clearScheduledStoreOpen();
+
     if (openStoreUrl(this.storeUrl)) {
       this.completionAdActionTriggered = true;
     }
@@ -172,11 +173,12 @@ export class PlayableGameController extends Component {
   public resetGame(): void {
     this.appliedWeaponLevel = 0;
     this.completionAdActionTriggered = false;
-    this.resetTargetHintTracking();
-    this.armInitialTargetHintDelay();
+    this.clearScheduledStoreOpen();
+    this.targetHints.reset();
+    this.targetHints.armInitialDelay();
     this.feedbackView?.clearTransientFeedback();
     this.refreshSceneConfig();
-    this.prewarmTargetHints();
+    this.targetHints.prewarm();
     this.dispatch({ type: 'reset' });
   }
 
@@ -190,7 +192,7 @@ export class PlayableGameController extends Component {
     this.playEventFeedback(result.events, snapshot);
     this.emitStateChanged(result.events);
     this.handleAutomaticProgression(result.events);
-    this.handleTargetHintEvents(result.events, snapshot);
+    this.targetHints.handleEvents(result.events, snapshot);
   }
 
   private applySnapshot(snapshot: PlayableSnapshot): void {
@@ -199,6 +201,7 @@ export class PlayableGameController extends Component {
     this.applyWeapon(snapshot);
     this.hudView?.applySnapshot(snapshot);
     this.applyUpgradeStation(snapshot);
+    this.applyPlayerCompletionLock(snapshot);
   }
 
   private applyResources(resources: ResourceState[]): void {
@@ -375,103 +378,6 @@ export class PlayableGameController extends Component {
     this.feedbackView?.updateHealthBars(deltaTime);
   }
 
-  private updateTargetHint(
-    deltaTime: number,
-    snapshot: PlayableSnapshot = this.getSnapshot(),
-  ): void {
-    if (this.feedbackView === null) {
-      return;
-    }
-
-    const target = this.resolveTargetHint(snapshot, TMP_VEC3_A, TMP_VEC3_D);
-
-    if (target === null) {
-      this.resetTargetHintTracking();
-      this.feedbackView.hideTargetHint();
-      return;
-    }
-
-    const objectiveChanged = target.objectiveKey !== this.targetHintObjectiveKey;
-    const targetChanged = target.key !== this.targetHintTargetKey;
-    this.targetHintObjectiveKey = target.objectiveKey;
-    this.targetHintTargetKey = target.key;
-    this.feedbackView.syncTargetHint(TMP_VEC3_A, target.useWorldBounds ? TMP_VEC3_D : null);
-
-    if (objectiveChanged) {
-      if (!this.targetHintShownOnce) {
-        this.targetHintCooldownRemaining = this.getCurrentTargetHintDelay();
-        return;
-      }
-
-      this.playTargetHintAt(TMP_VEC3_A, target.useWorldBounds ? TMP_VEC3_D : null, target.prefab);
-      return;
-    }
-
-    if (targetChanged) {
-      this.targetHintCooldownRemaining = this.getCurrentTargetHintDelay();
-    }
-
-    if (this.isPlayerCurrentlyActive()) {
-      this.targetHintCooldownRemaining = this.getCurrentTargetHintDelay();
-      return;
-    }
-
-    this.targetHintCooldownRemaining -= deltaTime;
-
-    if (this.targetHintCooldownRemaining <= 0) {
-      this.playTargetHintAt(TMP_VEC3_A, target.useWorldBounds ? TMP_VEC3_D : null, target.prefab);
-    }
-  }
-
-  private handleTargetHintEvents(events: GameEvent[], snapshot: PlayableSnapshot): void {
-    if (events.length === 0) {
-      return;
-    }
-
-    const shouldDelayHint = events.some(
-      (event) =>
-        event.type === 'resource_hit' ||
-        event.type === 'resource_collected' ||
-        event.type === 'gate_hit' ||
-        event.type === 'gate_destroyed',
-    );
-
-    if (shouldDelayHint) {
-      this.targetHintCooldownRemaining = Math.max(0, this.targetHintIdleDelay);
-      this.feedbackView?.hideTargetHint();
-    }
-
-    this.updateTargetHint(0, snapshot);
-  }
-
-  private playTargetHintAt(
-    worldPosition: Vec3,
-    worldSize: Vec3 | null,
-    prefab: Prefab | null,
-  ): void {
-    this.targetHintShownOnce = true;
-    this.targetHintCooldownRemaining = Math.max(0, this.targetHintIdleDelay);
-    this.feedbackView?.playTargetHint(worldPosition, worldSize, prefab);
-  }
-
-  private resetTargetHintTracking(): void {
-    this.targetHintCooldownRemaining = 0;
-    this.targetHintObjectiveKey = '';
-    this.targetHintTargetKey = '';
-  }
-
-  private armInitialTargetHintDelay(): void {
-    this.targetHintShownOnce = false;
-    this.targetHintCooldownRemaining = Math.max(0, this.initialTargetHintIdleDelay);
-  }
-
-  private getCurrentTargetHintDelay(): number {
-    return Math.max(
-      0,
-      this.targetHintShownOnce ? this.targetHintIdleDelay : this.initialTargetHintIdleDelay,
-    );
-  }
-
   private playEventFeedback(events: GameEvent[], snapshot: PlayableSnapshot): void {
     for (const event of events) {
       switch (event.type) {
@@ -509,9 +415,44 @@ export class PlayableGameController extends Component {
   }
 
   private handlePlayableCompleted(): void {
+    this.applyPlayerCompletionLock(this.getSnapshot());
+
     if (this.openStoreAutomaticallyOnCompletion && !this.completionAdActionTriggered) {
-      this.openStore();
+      this.scheduleStoreOpen();
     }
+  }
+
+  private scheduleStoreOpen(): void {
+    if (this.completionStoreOpenScheduled || this.completionAdActionTriggered) {
+      return;
+    }
+
+    const delaySeconds = Math.max(0, this.completionStoreOpenDelay);
+
+    if (delaySeconds === 0) {
+      this.openStore();
+      return;
+    }
+
+    this.completionStoreOpenScheduled = true;
+    this.scheduleOnce(this.handleScheduledStoreOpen, delaySeconds);
+  }
+
+  private clearScheduledStoreOpen(): void {
+    if (!this.completionStoreOpenScheduled) {
+      return;
+    }
+
+    this.unschedule(this.handleScheduledStoreOpen);
+    this.completionStoreOpenScheduled = false;
+  }
+
+  private applyPlayerCompletionLock(snapshot: PlayableSnapshot): void {
+    if (!this.lockPlayerOnCompletion) {
+      return;
+    }
+
+    this.resolvePlayerController()?.setControlsEnabled(!snapshot.completed);
   }
 
   private playResourceHitFeedback(
@@ -660,106 +601,6 @@ export class PlayableGameController extends Component {
 
     gate.getFeedbackWorldPosition(TMP_VEC3_A);
     this.feedbackView.updateGateHealthBarPosition(TMP_VEC3_A);
-  }
-
-  private resolveTargetHint(
-    snapshot: PlayableSnapshot,
-    outPosition: Vec3,
-    outSize: Vec3,
-  ): TargetHintCandidate | null {
-    if (snapshot.completed) {
-      return null;
-    }
-
-    if (snapshot.canUpgrade) {
-      return null;
-    }
-
-    if (snapshot.weaponLevel < 3) {
-      return this.resolveResourceTargetHint(snapshot, outPosition, outSize);
-    }
-
-    const gate = this.resolveExitGate();
-
-    if (gate === null || snapshot.gate.destroyed) {
-      return null;
-    }
-
-    gate.getTargetHintWorldBounds(outPosition, outSize);
-    return {
-      key: gate.getRuntimeId(),
-      objectiveKey: 'gate',
-      useWorldBounds: true,
-      prefab: gate.getTargetHintPrefab(),
-    };
-  }
-
-  private resolveResourceTargetHint(
-    snapshot: PlayableSnapshot,
-    outPosition: Vec3,
-    outSize: Vec3,
-  ): TargetHintCandidate | null {
-    const player = this.resolvePlayerController();
-    const targetLevel = snapshot.weaponLevel;
-    let bestResource: BreakableResource | null = null;
-    let bestDistance = Number.POSITIVE_INFINITY;
-
-    if (player !== null) {
-      player.node.getWorldPosition(TMP_VEC3_B);
-    }
-
-    for (const resourceState of snapshot.resources) {
-      if (resourceState.collected || resourceState.requiredWeaponLevel !== targetLevel) {
-        continue;
-      }
-
-      const resource = this.findResourceComponent(resourceState.id);
-
-      if (resource === null || !resource.node.activeInHierarchy) {
-        continue;
-      }
-
-      resource.getHitWorldPosition(TMP_VEC3_C);
-
-      const distance =
-        player === null
-          ? 0
-          : (TMP_VEC3_C.x - TMP_VEC3_B.x) ** 2 + (TMP_VEC3_C.z - TMP_VEC3_B.z) ** 2;
-
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestResource = resource;
-      }
-    }
-
-    if (bestResource === null) {
-      return null;
-    }
-
-    bestResource.getTargetHintWorldBounds(outPosition, outSize);
-
-    return {
-      key: bestResource.getRuntimeId(),
-      objectiveKey: targetLevel === 1 ? 'wood' : 'metal',
-      useWorldBounds: true,
-      prefab: bestResource.getTargetHintPrefab(),
-    };
-  }
-
-  private prewarmTargetHints(): void {
-    if (this.feedbackView === null) {
-      return;
-    }
-
-    for (const resource of this.resolveResources()) {
-      this.feedbackView.prepareTargetHint(resource.getTargetHintPrefab());
-    }
-
-    this.feedbackView.prepareTargetHint(this.resolveExitGate()?.getTargetHintPrefab() ?? null);
-  }
-
-  private isPlayerCurrentlyActive(): boolean {
-    return this.resolvePlayerController()?.hasActiveGameplayInput() ?? false;
   }
 
   private getWeaponDisplayName(level: number): string {
