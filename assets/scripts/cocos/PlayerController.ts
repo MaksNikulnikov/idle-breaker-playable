@@ -1,7 +1,6 @@
 import {
   _decorator,
   Component,
-  director,
   EventKeyboard,
   EventMouse,
   EventTouch,
@@ -11,25 +10,25 @@ import {
   Input,
   KeyCode,
   Node,
-  Quat,
   RigidBody,
   SkeletalAnimation,
   sys,
-  UITransform,
   Vec2,
-  Vec3,
 } from 'cc';
 
+import { createPlayerLocomotionPlan, PlayerAttackState } from '../application';
 import { BrowserInputSafety } from './BrowserInputSafety';
+import { PlayerAnimationView } from './PlayerAnimationView';
+import { PlayerInputState, type PlayerMoveKey } from './PlayerInputState';
+import { PlayerJoystickView } from './PlayerJoystickView';
+import { PlayerMovementView } from './PlayerMovementView';
 
 const { ccclass, disallowMultiple, property, requireComponent } = _decorator;
 
 export const PLAYER_ATTACK_STARTED_EVENT = 'player-attack-started';
 export const PLAYER_ATTACK_ENDED_EVENT = 'player-attack-ended';
 
-const UP = new Vec3(0, 1, 0);
 const MIN_INPUT_LENGTH = 0.05;
-const JOYSTICK_MAX_DISTANCE = 58;
 const MOUSE_CLICK_DRAG_THRESHOLD = 8;
 
 @ccclass('PlayerController')
@@ -73,41 +72,20 @@ export class PlayerController extends Component {
   public animationRoot: Node | null = null;
 
   @property
-  public touchJoystickOnDesktop = false;
+  public touchJoystickOnDesktop = true;
 
   @property
   public controlsEnabled = true;
 
+  private readonly inputState = new PlayerInputState();
   private readonly inputVector = new Vec2();
-  private readonly keyboardVector = new Vec2();
   private readonly mouseStart = new Vec2();
   private readonly mouseLocation = new Vec2();
   private readonly touchStart = new Vec2();
-  private readonly movement = new Vec3();
-  private readonly faceView = new Vec3();
-  private readonly velocity = new Vec3();
-  private readonly facingRotation = new Quat();
-  private readonly desiredRotation = new Quat();
-  private readonly visualOffsetRotation = new Quat();
-  private readonly joystickLocalPosition = new Vec3();
-  private readonly joystickHandlePosition = new Vec3();
-
-  private rigidBody: RigidBody | null = null;
-  private animation: SkeletalAnimation | null = null;
-  private inputSurface: Node | null = null;
-  private joystickRoot: Node | null = null;
-  private joystickHandle: Node | null = null;
-  private activeClip = '';
-  private activeTouchId: number | null = null;
-  private touchActive = false;
-  private touchDragged = false;
-  private mousePressed = false;
-  private mouseDragged = false;
-  private attackTimeRemaining = 0;
-  private moveLeft = false;
-  private moveRight = false;
-  private moveForward = false;
-  private moveBackward = false;
+  private readonly attackState = new PlayerAttackState();
+  private readonly animationView = new PlayerAnimationView();
+  private readonly joystickView = new PlayerJoystickView();
+  private readonly movementView = new PlayerMovementView();
   private readonly browserInputSafety = new BrowserInputSafety({
     resetInput: () => this.resetInputState(),
     resetPointerInput: () => this.resetPointerInput(),
@@ -115,16 +93,16 @@ export class PlayerController extends Component {
   });
 
   public onLoad(): void {
-    this.rigidBody = this.getComponent(RigidBody);
-
+    this.movementView.bind(this.node, this.getComponent(RigidBody), this.visualRoot);
     const animationNode = this.animationRoot ?? this.visualRoot ?? this.node;
-    this.animation =
-      animationNode.getComponent(SkeletalAnimation) ?? this.getComponent(SkeletalAnimation);
-    this.resolveJoystickReferences();
+    this.animationView.bind(
+      animationNode.getComponent(SkeletalAnimation) ?? this.getComponent(SkeletalAnimation),
+    );
+    this.joystickView.resolve();
   }
 
   public onEnable(): void {
-    this.resolveJoystickReferences();
+    this.joystickView.resolve();
     input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
     input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
     input.on(Input.EventType.MOUSE_DOWN, this.onMouseDown, this);
@@ -136,7 +114,7 @@ export class PlayerController extends Component {
     input.on(Input.EventType.TOUCH_CANCEL, this.onTouchCancel, this);
     game.on(Game.EVENT_HIDE, this.resetInputState, this);
     game.on(Game.EVENT_SHOW, this.resetInputState, this);
-    this.inputSurface?.on(Node.EventType.MOUSE_LEAVE, this.onMouseLeave, this);
+    this.joystickView.getInputSurface()?.on(Node.EventType.MOUSE_LEAVE, this.onMouseLeave, this);
     this.browserInputSafety.bind();
   }
 
@@ -152,7 +130,7 @@ export class PlayerController extends Component {
     input.off(Input.EventType.TOUCH_CANCEL, this.onTouchCancel, this);
     game.off(Game.EVENT_HIDE, this.resetInputState, this);
     game.off(Game.EVENT_SHOW, this.resetInputState, this);
-    this.inputSurface?.off(Node.EventType.MOUSE_LEAVE, this.onMouseLeave, this);
+    this.joystickView.getInputSurface()?.off(Node.EventType.MOUSE_LEAVE, this.onMouseLeave, this);
     this.browserInputSafety.unbind();
     this.resetInputState();
   }
@@ -162,15 +140,15 @@ export class PlayerController extends Component {
 
     if (!this.controlsEnabled) {
       this.resetInputState();
-      this.playAnimation(this.idleClip, 0.12);
+      this.animationView.play(this.idleClip, 0.12);
       return;
     }
 
-    if (this.attackTimeRemaining > 0) {
-      this.attackTimeRemaining = Math.max(0, this.attackTimeRemaining - deltaTime);
-      this.move(0, 0, deltaTime);
+    if (this.attackState.isAttacking) {
+      const attackEnded = this.attackState.tick(deltaTime);
+      this.movementView.applyVelocity(0, 0, deltaTime);
 
-      if (this.attackTimeRemaining > 0) {
+      if (!attackEnded) {
         return;
       }
 
@@ -179,16 +157,21 @@ export class PlayerController extends Component {
 
     this.resolveInput();
 
-    const hasInput = this.inputVector.lengthSqr() > MIN_INPUT_LENGTH * MIN_INPUT_LENGTH;
-    if (!hasInput) {
-      this.move(0, 0, deltaTime);
+    const locomotion = createPlayerLocomotionPlan({
+      inputX: this.inputVector.x,
+      inputY: this.inputVector.y,
+      moveSpeed: this.moveSpeed,
+      minInputLength: MIN_INPUT_LENGTH,
+    });
+
+    this.movementView.applyVelocity(locomotion.velocityX, locomotion.velocityZ, deltaTime);
+
+    if (!locomotion.hasMovement) {
       this.playLocomotionAnimation(this.idleClip);
       return;
     }
 
-    this.inputVector.normalize();
-    this.move(this.inputVector.x, -this.inputVector.y, deltaTime);
-    this.rotateVisual(deltaTime);
+    this.movementView.rotateVisual(locomotion, this.visualYawOffset, this.rotationSpeed, deltaTime);
     this.playLocomotionAnimation(this.runClip);
   }
 
@@ -197,16 +180,7 @@ export class PlayerController extends Component {
       return false;
     }
 
-    return (
-      this.attackTimeRemaining > 0 ||
-      this.touchActive ||
-      this.mousePressed ||
-      this.moveLeft ||
-      this.moveRight ||
-      this.moveForward ||
-      this.moveBackward ||
-      this.inputVector.lengthSqr() > MIN_INPUT_LENGTH * MIN_INPUT_LENGTH
-    );
+    return this.attackState.isAttacking || this.inputState.hasActiveGameplayInput(MIN_INPUT_LENGTH);
   }
 
   public setControlsEnabled(enabled: boolean): void {
@@ -220,10 +194,9 @@ export class PlayerController extends Component {
       return;
     }
 
-    const wasAttacking = this.attackTimeRemaining > 0;
-    this.attackTimeRemaining = 0;
+    const wasAttacking = this.attackState.cancel();
     this.resetInputState();
-    this.playAnimation(this.idleClip, 0.12, true);
+    this.animationView.play(this.idleClip, 0.12, true);
 
     if (wasAttacking) {
       this.node.emit(PLAYER_ATTACK_ENDED_EVENT);
@@ -231,90 +204,39 @@ export class PlayerController extends Component {
   }
 
   private resolveInput(): void {
-    if (this.touchActive) {
+    if (this.inputState.touchActive) {
       return;
     }
 
-    this.keyboardVector.set(
-      Number(this.moveRight) - Number(this.moveLeft),
-      Number(this.moveForward) - Number(this.moveBackward),
-    );
-    this.inputVector.set(this.keyboardVector);
-  }
-
-  private move(x: number, z: number, deltaTime: number): void {
-    this.velocity.set(x * this.moveSpeed, 0, z * this.moveSpeed);
-
-    if (this.rigidBody !== null) {
-      this.rigidBody.setLinearVelocity(this.velocity);
-      return;
-    }
-
-    this.movement.set(this.velocity);
-    this.movement.multiplyScalar(deltaTime);
-    this.node.translate(this.movement, Node.NodeSpace.WORLD);
-  }
-
-  private rotateVisual(deltaTime: number): void {
-    const target = this.visualRoot ?? this.node;
-    this.movement.set(this.inputVector.x, 0, -this.inputVector.y);
-    this.faceView.set(-this.movement.x, 0, -this.movement.z);
-
-    Quat.fromViewUp(this.facingRotation, this.faceView, UP);
-    Quat.fromEuler(this.visualOffsetRotation, 0, this.visualYawOffset, 0);
-    Quat.multiply(this.facingRotation, this.facingRotation, this.visualOffsetRotation);
-
-    Quat.slerp(
-      this.desiredRotation,
-      target.worldRotation,
-      this.facingRotation,
-      Math.min(1, this.rotationSpeed * deltaTime),
-    );
-    target.setWorldRotation(this.desiredRotation);
+    this.inputState.syncKeyboardInput();
+    this.syncInputVectorFromState();
   }
 
   private playLocomotionAnimation(clipName: string): void {
-    if (this.attackTimeRemaining > 0) {
+    if (this.attackState.isAttacking) {
       return;
     }
 
-    this.playAnimation(clipName, 0.12);
+    this.animationView.play(clipName, 0.12);
   }
 
   private attack(): void {
-    if (!this.controlsEnabled || this.attackTimeRemaining > 0) {
+    if (!this.controlsEnabled) {
       return;
     }
 
-    const safeAttackSpeed = Math.max(0.01, this.attackSpeed);
-    const animationRuntime = this.attackDuration / safeAttackSpeed;
-    this.attackTimeRemaining = Math.max(animationRuntime, this.attackLockDuration);
-    this.playAnimation(this.attackClip, 0.05, true, safeAttackSpeed, true);
-    this.node.emit(PLAYER_ATTACK_STARTED_EVENT, this.attackTimeRemaining);
-  }
+    const attack = this.attackState.start({
+      animationDuration: this.attackDuration,
+      attackSpeed: this.attackSpeed,
+      lockDuration: this.attackLockDuration,
+    });
 
-  private playAnimation(
-    clipName: string,
-    fadeDuration: number,
-    force = false,
-    speed = 1,
-    rewind = false,
-  ): void {
-    if (this.animation === null || (!force && this.activeClip === clipName)) {
+    if (!attack.started) {
       return;
     }
 
-    const state = this.animation.getState(clipName);
-    if (!state) {
-      return;
-    }
-
-    state.speed = speed;
-    if (rewind) {
-      state.time = 0;
-    }
-    this.animation.crossFade(clipName, fadeDuration);
-    this.activeClip = clipName;
+    this.animationView.play(this.attackClip, 0.05, true, attack.playbackSpeed, true);
+    this.node.emit(PLAYER_ATTACK_STARTED_EVENT, attack.lockTime);
   }
 
   private onKeyDown(event: EventKeyboard): void {
@@ -338,13 +260,19 @@ export class PlayerController extends Component {
       return;
     }
 
+    if (this.shouldUseDesktopJoystick()) {
+      this.resetPointerInput();
+      event.getUILocation(this.touchStart);
+      this.beginJoystickPointer(null, this.touchStart);
+      return;
+    }
+
     if (this.shouldUseTouchJoystick()) {
       return;
     }
 
     this.resetPointerInput();
-    this.mousePressed = true;
-    this.mouseDragged = false;
+    this.inputState.beginMouse();
     event.getUILocation(this.mouseStart);
   }
 
@@ -353,7 +281,17 @@ export class PlayerController extends Component {
       return;
     }
 
-    if (this.shouldUseTouchJoystick() || !this.mousePressed) {
+    if (this.shouldUseDesktopJoystick()) {
+      if (!this.inputState.touchActive) {
+        return;
+      }
+
+      event.getUILocation(this.mouseLocation);
+      this.moveJoystickPointer(this.mouseLocation);
+      return;
+    }
+
+    if (this.shouldUseTouchJoystick() || !this.inputState.mousePressed) {
       return;
     }
 
@@ -363,7 +301,7 @@ export class PlayerController extends Component {
       Vec2.squaredDistance(this.mouseStart, this.mouseLocation) >
       MOUSE_CLICK_DRAG_THRESHOLD ** 2
     ) {
-      this.mouseDragged = true;
+      this.inputState.markMouseDragged();
     }
   }
 
@@ -373,15 +311,23 @@ export class PlayerController extends Component {
       return;
     }
 
+    if (this.shouldUseDesktopJoystick()) {
+      if (this.inputState.touchActive) {
+        this.endTouch(true);
+      }
+
+      return;
+    }
+
     if (this.shouldUseTouchJoystick()) {
-      if (this.touchActive) {
+      if (this.inputState.touchActive) {
         this.endTouch(false);
       }
 
       return;
     }
 
-    const shouldAttack = this.mousePressed && !this.mouseDragged;
+    const shouldAttack = this.inputState.shouldAttackFromMouseRelease();
     this.resetMouseInput();
     this.resetPointerInput();
 
@@ -393,6 +339,11 @@ export class PlayerController extends Component {
   private onMouseLeave(): void {
     if (!this.controlsEnabled) {
       this.resetInputState();
+      return;
+    }
+
+    if (this.shouldUseDesktopJoystick()) {
+      this.endTouch(false);
       return;
     }
 
@@ -410,29 +361,39 @@ export class PlayerController extends Component {
       return;
     }
 
+    const moveKey = this.getMoveKey(keyCode);
+
+    if (moveKey !== null) {
+      this.inputState.setMoveKey(moveKey, pressed);
+      return;
+    }
+
     switch (keyCode) {
-      case KeyCode.KEY_A:
-      case KeyCode.ARROW_LEFT:
-        this.moveLeft = pressed;
-        break;
-      case KeyCode.KEY_D:
-      case KeyCode.ARROW_RIGHT:
-        this.moveRight = pressed;
-        break;
-      case KeyCode.KEY_W:
-      case KeyCode.ARROW_UP:
-        this.moveForward = pressed;
-        break;
-      case KeyCode.KEY_S:
-      case KeyCode.ARROW_DOWN:
-        this.moveBackward = pressed;
-        break;
       case KeyCode.SPACE:
       case KeyCode.ENTER:
         if (pressed) {
           this.attack();
         }
         break;
+    }
+  }
+
+  private getMoveKey(keyCode: KeyCode): PlayerMoveKey | null {
+    switch (keyCode) {
+      case KeyCode.KEY_A:
+      case KeyCode.ARROW_LEFT:
+        return 'left';
+      case KeyCode.KEY_D:
+      case KeyCode.ARROW_RIGHT:
+        return 'right';
+      case KeyCode.KEY_W:
+      case KeyCode.ARROW_UP:
+        return 'forward';
+      case KeyCode.KEY_S:
+      case KeyCode.ARROW_DOWN:
+        return 'backward';
+      default:
+        return null;
     }
   }
 
@@ -447,15 +408,12 @@ export class PlayerController extends Component {
 
     this.releaseStaleTouch();
 
-    if (this.touchActive) {
+    if (this.inputState.touchActive) {
       return;
     }
 
-    this.activeTouchId = event.getID();
-    this.touchActive = true;
-    this.touchDragged = false;
     event.getUILocation(this.touchStart);
-    this.inputVector.set(0, 0);
+    this.beginJoystickPointer(event.getID(), this.touchStart);
   }
 
   private onTouchMove(event: EventTouch): void {
@@ -471,18 +429,32 @@ export class PlayerController extends Component {
       return;
     }
 
-    const location = event.getUILocation();
-    this.inputVector.set(location.x - this.touchStart.x, location.y - this.touchStart.y);
+    this.moveJoystickPointer(event.getUILocation());
+  }
+
+  private beginJoystickPointer(pointerId: number | null, screenPosition: Vec2): void {
+    this.inputState.beginTouch(pointerId);
+    this.touchStart.set(screenPosition.x, screenPosition.y);
+    this.syncInputVectorFromState();
+  }
+
+  private moveJoystickPointer(screenPosition: Vec2): void {
+    this.inputState.setInputVector(
+      screenPosition.x - this.touchStart.x,
+      screenPosition.y - this.touchStart.y,
+    );
+    this.syncInputVectorFromState();
 
     if (this.inputVector.length() < this.touchDeadZone) {
-      this.inputVector.set(0, 0);
-      this.updateJoystickHandle(this.inputVector);
+      this.inputState.setInputVector(0, 0);
+      this.syncInputVectorFromState();
+      this.joystickView.updateHandle(this.inputVector);
       return;
     }
 
-    this.touchDragged = true;
-    this.showJoystickAtTouchStart();
-    this.updateJoystickHandle(this.inputVector);
+    this.inputState.markTouchDragged();
+    this.joystickView.showAt(this.touchStart);
+    this.joystickView.updateHandle(this.inputVector);
   }
 
   private onTouchEnd(event: EventTouch): void {
@@ -520,7 +492,7 @@ export class PlayerController extends Component {
   }
 
   private endTouch(shouldAttackOnTap: boolean): void {
-    const wasTap = this.touchActive && !this.touchDragged;
+    const wasTap = this.inputState.isTouchTap();
     this.resetPointerInput();
 
     if (shouldAttackOnTap && wasTap) {
@@ -528,69 +500,11 @@ export class PlayerController extends Component {
     }
   }
 
-  private resolveJoystickReferences(): void {
-    const canvas = director.getScene()?.getChildByName('HudCanvas') ?? null;
-    this.inputSurface = canvas;
-    this.joystickRoot = canvas?.getChildByName('JoystickRoot') ?? null;
-    this.joystickHandle = this.joystickRoot?.getChildByName('JoystickHandle') ?? null;
-    this.hideJoystick();
-  }
-
-  private showJoystickAtTouchStart(): void {
-    if (this.joystickRoot === null) {
-      this.resolveJoystickReferences();
-    }
-
-    if (this.joystickRoot === null) {
-      return;
-    }
-
-    const canvasTransform = this.joystickRoot.parent?.getComponent(UITransform) ?? null;
-    this.joystickLocalPosition.set(this.touchStart.x, this.touchStart.y, 0);
-
-    if (canvasTransform !== null) {
-      canvasTransform.convertToNodeSpaceAR(this.joystickLocalPosition, this.joystickLocalPosition);
-    }
-
-    this.joystickRoot.setPosition(this.joystickLocalPosition);
-    this.joystickRoot.active = true;
-  }
-
-  private updateJoystickHandle(delta: Vec2): void {
-    if (this.joystickHandle === null) {
-      return;
-    }
-
-    const length = delta.length();
-
-    if (length <= 0.001) {
-      this.joystickHandle.setPosition(0, 0, 0);
-      return;
-    }
-
-    const distance = Math.min(JOYSTICK_MAX_DISTANCE, length);
-    this.joystickHandlePosition.set(
-      (delta.x / length) * distance,
-      (delta.y / length) * distance,
-      0,
-    );
-    this.joystickHandle.setPosition(this.joystickHandlePosition);
-  }
-
-  private hideJoystick(): void {
-    this.joystickRoot?.setPosition(0, 0, 0);
-    this.joystickHandle?.setPosition(0, 0, 0);
-
-    if (this.joystickRoot !== null) {
-      this.joystickRoot.active = false;
-    }
-  }
-
   private releaseStaleTouch(): void {
     if (
-      this.touchActive &&
-      this.activeTouchId !== null &&
-      input.getTouch(this.activeTouchId) === undefined
+      this.inputState.touchActive &&
+      this.inputState.activeTouchId !== null &&
+      input.getTouch(this.inputState.activeTouchId) === undefined
     ) {
       this.resetPointerInput();
     }
@@ -598,36 +512,39 @@ export class PlayerController extends Component {
 
   private isActiveTouchEvent(event: EventTouch): boolean {
     const touchId = event.getID();
-    return this.activeTouchId === null || touchId === null || touchId === this.activeTouchId;
+    return this.inputState.isActiveTouchEvent(touchId);
   }
 
   private shouldUseTouchJoystick(): boolean {
     return sys.isMobile || this.touchJoystickOnDesktop;
   }
 
+  private shouldUseDesktopJoystick(): boolean {
+    return !sys.isMobile && this.touchJoystickOnDesktop;
+  }
+
   private resetPointerInput(): void {
-    this.activeTouchId = null;
-    this.touchActive = false;
-    this.touchDragged = false;
-    this.inputVector.set(0, 0);
-    this.hideJoystick();
+    this.inputState.resetPointerInput();
+    this.syncInputVectorFromState();
+    this.joystickView.hide();
   }
 
   private resetMouseInput(): void {
-    this.mousePressed = false;
-    this.mouseDragged = false;
+    this.inputState.resetMouseInput();
     this.mouseStart.set(0, 0);
     this.mouseLocation.set(0, 0);
   }
 
   private resetInputState(): void {
-    this.resetPointerInput();
-    this.resetMouseInput();
-    this.keyboardVector.set(0, 0);
-    this.moveLeft = false;
-    this.moveRight = false;
-    this.moveForward = false;
-    this.moveBackward = false;
-    this.move(0, 0, 0);
+    this.inputState.resetAll();
+    this.syncInputVectorFromState();
+    this.joystickView.hide();
+    this.mouseStart.set(0, 0);
+    this.mouseLocation.set(0, 0);
+    this.movementView.applyVelocity(0, 0, 0);
+  }
+
+  private syncInputVectorFromState(): void {
+    this.inputVector.set(this.inputState.inputX, this.inputState.inputY);
   }
 }

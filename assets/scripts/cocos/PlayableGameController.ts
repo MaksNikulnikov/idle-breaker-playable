@@ -1,6 +1,10 @@
-import { _decorator, Collider, Color, Component, director, ITriggerEvent, Node, Vec3 } from 'cc';
+import { _decorator, Collider, Component, ITriggerEvent, Node } from 'cc';
 
-import { DEFAULT_PLAYABLE_CONFIG, openStoreUrl } from '../application';
+import {
+  DEFAULT_PLAYABLE_CONFIG,
+  DEFAULT_PLAYABLE_PRESENTATION_CONFIG,
+  type PlayablePresentationConfig,
+} from '../application';
 import {
   createInitialPlayableState,
   createPlayableSnapshot,
@@ -10,26 +14,22 @@ import {
   type PlayableConfig,
   type PlayableSnapshot,
   type PlayableState,
-  type ResourceDefinition,
-  type ResourceState,
 } from '../domain';
-import { BreakableResource, ResourceKind as CocosResourceKind } from './BreakableResource';
+import { BreakableResource } from './BreakableResource';
 import { ExitGate } from './ExitGate';
+import { PlayableCompletionController } from './PlayableCompletionController';
+import { PlayableEventFeedbackPresenter } from './PlayableEventFeedbackPresenter';
 import { PlayableFeedbackView } from './PlayableFeedbackView';
 import { PlayableHudView } from './PlayableHudView';
+import { PlayableSceneRegistry } from './PlayableSceneRegistry';
+import { PlayableSnapshotApplier } from './PlayableSnapshotApplier';
 import { PlayableTargetHintController } from './PlayableTargetHintController';
-import { PlayerController } from './PlayerController';
-import { WeaponMount } from './WeaponMount';
+import type { PlayerController } from './PlayerController';
 
 const { ccclass, disallowMultiple, property } = _decorator;
 
 export const PLAYABLE_STATE_CHANGED_EVENT = 'playable-state-changed';
 export const PLAYABLE_EVENTS_EVENT = 'playable-events';
-
-type RewardKind = 'wood' | 'metal';
-
-const TMP_VEC3_A = new Vec3();
-const TMP_VEC3_B = new Vec3();
 
 @ccclass('PlayableGameController')
 @disallowMultiple
@@ -77,21 +77,33 @@ export class PlayableGameController extends Component {
   public storeButton: Node | null = null;
 
   private config: PlayableConfig = DEFAULT_PLAYABLE_CONFIG;
+  private readonly presentationConfig: PlayablePresentationConfig =
+    DEFAULT_PLAYABLE_PRESENTATION_CONFIG;
   private state: PlayableState = createInitialPlayableState(DEFAULT_PLAYABLE_CONFIG);
   private snapshot: PlayableSnapshot = createPlayableSnapshot(this.state, this.config);
-  private appliedWeaponLevel = 0;
-  private readonly resources: BreakableResource[] = [];
-  private readonly resourcesById = new Map<string, BreakableResource>();
-  private weaponMount: WeaponMount | null = null;
-  private playerController: PlayerController | null = null;
+  private readonly sceneRegistry = new PlayableSceneRegistry();
+  private readonly eventFeedback = new PlayableEventFeedbackPresenter({
+    sceneRegistry: this.sceneRegistry,
+    presentationConfig: this.presentationConfig,
+    getFeedbackView: () => this.feedbackView,
+    getUpgradeStationAnchor: () => this.upgradeStationAnchor,
+  });
+  private readonly snapshotApplier = new PlayableSnapshotApplier({
+    sceneRegistry: this.sceneRegistry,
+    getHudView: () => this.hudView,
+    getFeedbackView: () => this.feedbackView,
+    getUpgradeStationTrigger: () => this.resolveUpgradeStationTrigger(),
+    getUpgradeStationAnchor: () => this.upgradeStationAnchor,
+    isPlayerCompletionLockEnabled: () => this.lockPlayerOnCompletion,
+  });
+  private readonly completionFlow = new PlayableCompletionController({
+    owner: this,
+    getStoreUrl: () => this.storeUrl,
+    isAutomaticOpenEnabled: () => this.openStoreAutomaticallyOnCompletion,
+    getAutomaticOpenDelay: () => this.completionStoreOpenDelay,
+    getStoreButton: () => this.storeButton,
+  });
   private boundUpgradeStationTrigger: Collider | null = null;
-  private boundStoreButton: Node | null = null;
-  private completionAdActionTriggered = false;
-  private completionStoreOpenScheduled = false;
-  private readonly handleScheduledStoreOpen = (): void => {
-    this.completionStoreOpenScheduled = false;
-    this.openStore();
-  };
   private readonly targetHints = new PlayableTargetHintController({
     getFeedbackView: () => this.feedbackView,
     getResources: () => this.resolveResources(),
@@ -103,20 +115,20 @@ export class PlayableGameController extends Component {
 
   public onEnable(): void {
     this.bindUpgradeStationTrigger();
-    this.bindStoreButton();
+    this.completionFlow.bindStoreButton();
   }
 
   public onDisable(): void {
-    this.clearScheduledStoreOpen();
+    this.completionFlow.clearScheduledStoreOpen();
     this.unbindUpgradeStationTrigger();
-    this.unbindStoreButton();
+    this.completionFlow.unbindStoreButton();
   }
 
   public start(): void {
     this.validateSceneReferences();
     this.refreshSceneConfig();
     this.bindUpgradeStationTrigger();
-    this.bindStoreButton();
+    this.completionFlow.bindStoreButton();
     this.feedbackView?.refreshLayout();
     this.feedbackView?.prewarmTransientEffects();
     this.feedbackView?.warmupTransientRenderers();
@@ -159,21 +171,12 @@ export class PlayableGameController extends Component {
   }
 
   public openStore(): void {
-    if (this.completionAdActionTriggered) {
-      return;
-    }
-
-    this.clearScheduledStoreOpen();
-
-    if (openStoreUrl(this.storeUrl)) {
-      this.completionAdActionTriggered = true;
-    }
+    this.completionFlow.openStore();
   }
 
   public resetGame(): void {
-    this.appliedWeaponLevel = 0;
-    this.completionAdActionTriggered = false;
-    this.clearScheduledStoreOpen();
+    this.snapshotApplier.reset();
+    this.completionFlow.reset();
     this.targetHints.reset();
     this.targetHints.armInitialDelay();
     this.feedbackView?.clearTransientFeedback();
@@ -196,55 +199,7 @@ export class PlayableGameController extends Component {
   }
 
   private applySnapshot(snapshot: PlayableSnapshot): void {
-    this.applyResources(snapshot.resources);
-    this.applyGate(snapshot);
-    this.applyWeapon(snapshot);
-    this.hudView?.applySnapshot(snapshot);
-    this.applyUpgradeStation(snapshot);
-    this.applyPlayerCompletionLock(snapshot);
-  }
-
-  private applyResources(resources: ResourceState[]): void {
-    const components = this.resolveResources();
-
-    for (const component of components) {
-      const state = this.findResourceState(resources, component.getRuntimeId());
-
-      if (state === null) {
-        continue;
-      }
-
-      component.setCollected(state.collected);
-
-      if (!state.collected) {
-        component.showDamageStage(state.maxHits - state.hitsRemaining);
-      }
-    }
-  }
-
-  private applyGate(snapshot: PlayableSnapshot): void {
-    const gate = this.resolveExitGate();
-
-    if (gate === null || gate.getRuntimeId() !== snapshot.gate.id) {
-      return;
-    }
-
-    gate.setDestroyed(snapshot.gate.destroyed);
-
-    if (!snapshot.gate.destroyed) {
-      gate.showDamageStage(snapshot.gate.maxHits - snapshot.gate.hitsRemaining);
-    }
-  }
-
-  private applyWeapon(snapshot: PlayableSnapshot): void {
-    const mount = this.resolveWeaponMount();
-
-    if (mount === null || this.appliedWeaponLevel === snapshot.weaponLevel) {
-      return;
-    }
-
-    mount.equipWeaponLevel(snapshot.weaponLevel);
-    this.appliedWeaponLevel = snapshot.weaponLevel;
+    this.snapshotApplier.apply(snapshot);
   }
 
   private handleAutomaticProgression(events: GameEvent[]): void {
@@ -272,52 +227,25 @@ export class PlayableGameController extends Component {
   }
 
   private resolveResources(): BreakableResource[] {
-    if (this.resources.length === 0) {
+    const resources = this.sceneRegistry.resolveResources();
+
+    if (resources.length === 0) {
       this.refreshSceneConfig();
     }
 
-    return this.resources.filter((resource) => resource !== null && resource.isValid);
+    return this.sceneRegistry.resolveResources();
   }
 
   private resolveExitGate(): ExitGate | null {
-    if (this.exitGate !== null && this.exitGate.isValid) {
-      return this.exitGate;
-    }
-
-    const scene = director.getScene();
-    this.exitGate = scene === null ? null : this.findExitGateInTree(scene);
-    return this.exitGate;
-  }
-
-  private resolveWeaponMount(): WeaponMount | null {
-    if (this.weaponMount !== null && this.weaponMount.isValid) {
-      return this.weaponMount;
-    }
-
-    const scene = director.getScene();
-    this.weaponMount = scene === null ? null : this.findWeaponMountInTree(scene);
-    return this.weaponMount;
+    return this.sceneRegistry.resolveExitGate(this.exitGate);
   }
 
   private resolvePlayerController(): PlayerController | null {
-    if (this.playerController !== null && this.playerController.isValid) {
-      return this.playerController;
-    }
-
-    const scene = director.getScene();
-    this.playerController = scene === null ? null : this.findPlayerInTree(scene);
-    return this.playerController;
+    return this.sceneRegistry.resolvePlayerController();
   }
 
   private resolveUpgradeStationTrigger(): Collider | null {
-    if (this.upgradeStationTrigger !== null && this.upgradeStationTrigger.isValid) {
-      return this.upgradeStationTrigger;
-    }
-
-    const scene = director.getScene();
-    this.upgradeStationTrigger =
-      scene === null ? null : this.findColliderByNodeName(scene, 'UpgradeStationTrigger');
-    return this.upgradeStationTrigger;
+    return this.sceneRegistry.resolveUpgradeStationTrigger(this.upgradeStationTrigger);
   }
 
   private validateSceneReferences(): void {
@@ -336,389 +264,30 @@ export class PlayableGameController extends Component {
   }
 
   private syncFeedbackState(snapshot: PlayableSnapshot): void {
-    if (this.feedbackView === null) {
-      return;
-    }
-
-    for (const resource of snapshot.resources) {
-      const component = this.findResourceComponent(resource.id);
-
-      if (component === null) {
-        continue;
-      }
-
-      component.getFeedbackWorldPosition(TMP_VEC3_A);
-      this.feedbackView.setResourceHealthBar(
-        resource.id,
-        TMP_VEC3_A,
-        resource.hitsRemaining,
-        resource.maxHits,
-        !resource.collected ? 'visible' : component.node.active ? 'hide-soon' : 'hidden',
-      );
-    }
-
-    const gate = this.resolveExitGate();
-
-    if (gate !== null) {
-      gate.getFeedbackWorldPosition(TMP_VEC3_A);
-      this.feedbackView.setGateHealthBar(
-        TMP_VEC3_A,
-        snapshot.gate.hitsRemaining,
-        snapshot.gate.maxHits,
-        !snapshot.gate.destroyed ? 'visible' : gate.node.active ? 'hide-soon' : 'hidden',
-      );
-    }
-
-    this.syncUpgradeStationZone(snapshot);
+    this.snapshotApplier.syncFeedbackState(snapshot);
   }
 
   private updateFeedback(deltaTime: number): void {
-    this.updateHealthBarPositions();
-    this.syncUpgradeStationZone(this.getSnapshot());
+    this.snapshotApplier.updateFeedbackPositions(this.getSnapshot());
     this.feedbackView?.updateHealthBars(deltaTime);
   }
 
   private playEventFeedback(events: GameEvent[], snapshot: PlayableSnapshot): void {
-    for (const event of events) {
-      switch (event.type) {
-        case 'resource_hit':
-          this.playResourceHitFeedback(event.resourceId, snapshot, event.kind);
-          break;
-        case 'resource_collected':
-          this.playResourceCollectedFeedback(event.resourceId);
-          break;
-        case 'resource_locked':
-          this.playResourceLockedFeedback(event.resourceId, event.requiredWeaponLevel);
-          break;
-        case 'gate_hit':
-          this.playGateHitFeedback(snapshot);
-          break;
-        case 'gate_locked':
-          this.playGateLockedFeedback(event.requiredWeaponLevel);
-          break;
-        case 'gate_destroyed':
-          this.playGateDestroyedFeedback();
-          break;
-        case 'weapon_upgraded':
-          this.playWeaponUpgradedFeedback(event.level);
-          break;
-        case 'upgrade_available':
-          this.playUpgradeAvailableFeedback();
-          break;
-        case 'playable_completed':
-          this.handlePlayableCompleted();
-          break;
-        default:
-          break;
-      }
+    if (this.eventFeedback.play(events, snapshot)) {
+      this.handlePlayableCompleted();
     }
   }
 
   private handlePlayableCompleted(): void {
-    this.applyPlayerCompletionLock(this.getSnapshot());
-
-    if (this.openStoreAutomaticallyOnCompletion && !this.completionAdActionTriggered) {
-      this.scheduleStoreOpen();
-    }
-  }
-
-  private scheduleStoreOpen(): void {
-    if (this.completionStoreOpenScheduled || this.completionAdActionTriggered) {
-      return;
-    }
-
-    const delaySeconds = Math.max(0, this.completionStoreOpenDelay);
-
-    if (delaySeconds === 0) {
-      this.openStore();
-      return;
-    }
-
-    this.completionStoreOpenScheduled = true;
-    this.scheduleOnce(this.handleScheduledStoreOpen, delaySeconds);
-  }
-
-  private clearScheduledStoreOpen(): void {
-    if (!this.completionStoreOpenScheduled) {
-      return;
-    }
-
-    this.unschedule(this.handleScheduledStoreOpen);
-    this.completionStoreOpenScheduled = false;
-  }
-
-  private applyPlayerCompletionLock(snapshot: PlayableSnapshot): void {
-    if (!this.lockPlayerOnCompletion) {
-      return;
-    }
-
-    this.resolvePlayerController()?.setControlsEnabled(!snapshot.completed);
-  }
-
-  private playResourceHitFeedback(
-    resourceId: string,
-    snapshot: PlayableSnapshot,
-    kind: RewardKind,
-  ): void {
-    const resource = this.findResourceComponent(resourceId);
-
-    if (resource === null) {
-      return;
-    }
-
-    resource.playHitFeedback();
-    resource.getFeedbackWorldPosition(TMP_VEC3_A);
-    resource.getHitWorldPosition(TMP_VEC3_B);
-    this.feedbackView?.spawnFloatingLabel(
-      this.getDamageText(snapshot),
-      TMP_VEC3_A,
-      new Color(255, 245, 220, 255),
-    );
-    this.resolveWeaponMount()?.playAttackSlash();
-    this.feedbackView?.spawnPickupRewards(kind, TMP_VEC3_B);
-    this.feedbackView?.spawnHitStars(TMP_VEC3_B);
-    this.feedbackView?.spawnImpactBurst(TMP_VEC3_B, 1.15);
-  }
-
-  private playResourceCollectedFeedback(resourceId: string): void {
-    const resource = this.findResourceComponent(resourceId);
-
-    if (resource === null) {
-      return;
-    }
-
-    resource.getFeedbackWorldPosition(TMP_VEC3_A);
-    resource.getHitWorldPosition(TMP_VEC3_B);
-    resource.playCollectedFeedback();
-    this.feedbackView?.hideResourceHealthBar(resourceId, 0.25);
-    this.feedbackView?.spawnImpactBurst(TMP_VEC3_B, 1.45);
-  }
-
-  private playResourceLockedFeedback(resourceId: string, requiredWeaponLevel: number): void {
-    const resource = this.findResourceComponent(resourceId);
-
-    if (resource === null) {
-      return;
-    }
-
-    resource.getFeedbackWorldPosition(TMP_VEC3_A);
-    this.feedbackView?.spawnFloatingLabel(
-      `LVL ${requiredWeaponLevel}`,
-      TMP_VEC3_A,
-      new Color(255, 120, 90, 255),
-    );
-  }
-
-  private playGateHitFeedback(snapshot: PlayableSnapshot): void {
-    const gate = this.resolveExitGate();
-
-    if (gate === null) {
-      return;
-    }
-
-    gate.playHitFeedback();
-    gate.getFeedbackWorldPosition(TMP_VEC3_A);
-    gate.getHitWorldPosition(TMP_VEC3_B);
-    this.feedbackView?.spawnFloatingLabel(
-      this.getDamageText(snapshot),
-      TMP_VEC3_A,
-      new Color(255, 245, 220, 255),
-    );
-    this.resolveWeaponMount()?.playAttackSlash();
-    this.feedbackView?.spawnImpactBurst(TMP_VEC3_B, 1.35);
-  }
-
-  private playGateLockedFeedback(requiredWeaponLevel: number): void {
-    const gate = this.resolveExitGate();
-
-    if (gate === null) {
-      return;
-    }
-
-    gate.getFeedbackWorldPosition(TMP_VEC3_A);
-    this.feedbackView?.spawnFloatingLabel(
-      `LVL ${requiredWeaponLevel}`,
-      TMP_VEC3_A,
-      new Color(255, 120, 90, 255),
-    );
-  }
-
-  private playGateDestroyedFeedback(): void {
-    const gate = this.resolveExitGate();
-
-    if (gate === null) {
-      return;
-    }
-
-    gate.getFeedbackWorldPosition(TMP_VEC3_A);
-    gate.getHitWorldPosition(TMP_VEC3_B);
-    gate.playDestroyedFeedback();
-    this.feedbackView?.hideGateHealthBar(0.35);
-    this.feedbackView?.spawnImpactBurst(TMP_VEC3_B, 1.75);
-  }
-
-  private playWeaponUpgradedFeedback(level: number): void {
-    this.feedbackView?.playWeaponUpgrade(
-      level,
-      this.getWeaponDisplayName(level),
-      this.getWeaponUnlockText(level),
-      this.getWeaponPowerBonus(level),
-    );
-  }
-
-  private playUpgradeAvailableFeedback(): void {
-    if (this.upgradeStationAnchor === null) {
-      return;
-    }
-
-    this.upgradeStationAnchor.getWorldPosition(TMP_VEC3_A);
-    TMP_VEC3_A.y += 1.25;
-    this.feedbackView?.spawnFloatingLabel('UPGRADE', TMP_VEC3_A, new Color(112, 255, 162, 255));
-  }
-
-  private updateHealthBarPositions(): void {
-    if (this.feedbackView === null) {
-      return;
-    }
-
-    for (const resourceId in this.state.resources) {
-      const resourceState = this.state.resources[resourceId];
-      const resource = this.findResourceComponent(resourceState.id);
-
-      if (resource === null || !resource.node.active) {
-        continue;
-      }
-
-      resource.getFeedbackWorldPosition(TMP_VEC3_A);
-      this.feedbackView.updateResourceHealthBarPosition(resourceState.id, TMP_VEC3_A);
-    }
-
-    const gate = this.resolveExitGate();
-
-    if (gate === null || !gate.node.active) {
-      return;
-    }
-
-    gate.getFeedbackWorldPosition(TMP_VEC3_A);
-    this.feedbackView.updateGateHealthBarPosition(TMP_VEC3_A);
-  }
-
-  private getWeaponDisplayName(level: number): string {
-    if (level >= 3) {
-      return 'HAMMER';
-    }
-
-    if (level === 2) {
-      return 'METAL PIPE';
-    }
-
-    return 'WOODEN PLANK';
-  }
-
-  private getWeaponUnlockText(level: number): string {
-    if (level >= 3) {
-      return 'GATE UNLOCKED';
-    }
-
-    return 'BOXES UNLOCKED';
-  }
-
-  private getWeaponPowerBonus(level: number): number {
-    if (level >= 3) {
-      return 250;
-    }
-
-    return 150;
-  }
-
-  private getDamageText(snapshot: PlayableSnapshot): string {
-    if (snapshot.weaponLevel === 1) {
-      return '45';
-    }
-
-    if (snapshot.weaponLevel === 2) {
-      return '75';
-    }
-
-    return '110';
-  }
-
-  private findResourceComponent(resourceId: string): BreakableResource | null {
-    return this.resourcesById.get(resourceId) ?? null;
+    this.snapshotApplier.applyPlayerCompletionLock(this.getSnapshot());
+    this.completionFlow.handleCompleted();
   }
 
   private refreshSceneConfig(): void {
-    this.resources.length = 0;
-    this.resourcesById.clear();
-
-    const scene = director.getScene();
-    const sceneResources = scene === null ? [] : this.findResourcesInTree(scene);
-    const usedIds = new Map<string, number>();
-    const definitions: ResourceDefinition[] = [];
-
-    for (const resource of sceneResources) {
-      const id = this.createUniqueResourceId(resource, usedIds);
-      resource.assignRuntimeId(id);
-      this.resources.push(resource);
-      this.resourcesById.set(id, resource);
-      definitions.push(this.createResourceDefinition(resource, id));
-    }
-
-    this.config = {
-      ...DEFAULT_PLAYABLE_CONFIG,
-      resources: definitions.length > 0 ? definitions : DEFAULT_PLAYABLE_CONFIG.resources,
-    };
-  }
-
-  private createUniqueResourceId(
-    resource: BreakableResource,
-    usedIds: Map<string, number>,
-  ): string {
-    const baseId = resource.resourceId.trim() || resource.node.name || 'Resource';
-    const count = usedIds.get(baseId) ?? 0;
-    usedIds.set(baseId, count + 1);
-
-    if (count === 0) {
-      return baseId;
-    }
-
-    return `${baseId}_${count + 1}`;
-  }
-
-  private createResourceDefinition(resource: BreakableResource, id: string): ResourceDefinition {
-    return {
-      id,
-      kind: resource.resourceKind === CocosResourceKind.Metal ? 'metal' : 'wood',
-      requiredWeaponLevel: resource.requiredWeaponLevel >= 2 ? 2 : 1,
-      rewardAmount: Math.max(1, Math.floor(resource.rewardAmount)),
-      maxHits: Math.max(1, Math.floor(resource.maxHits)),
-    };
-  }
-
-  private applyUpgradeStation(snapshot: PlayableSnapshot): void {
-    const trigger = this.resolveUpgradeStationTrigger();
-
-    if (trigger !== null) {
-      trigger.isTrigger = true;
-      trigger.enabled = snapshot.canUpgrade && !snapshot.completed;
-    }
-
-    this.syncUpgradeStationZone(snapshot);
-  }
-
-  private syncUpgradeStationZone(snapshot: PlayableSnapshot): void {
-    if (this.feedbackView === null) {
-      return;
-    }
-
-    const anchor = this.upgradeStationAnchor ?? this.resolveUpgradeStationTrigger()?.node ?? null;
-    const visible = snapshot.canUpgrade && !snapshot.completed && anchor !== null;
-
-    if (anchor !== null) {
-      anchor.getWorldPosition(TMP_VEC3_A);
-    }
-
-    this.feedbackView.setUpgradeStationZone(TMP_VEC3_A, visible);
+    this.config = this.sceneRegistry.refreshConfig(DEFAULT_PLAYABLE_CONFIG, {
+      exitGate: this.exitGate,
+      upgradeStationTrigger: this.upgradeStationTrigger,
+    });
   }
 
   private bindUpgradeStationTrigger(): void {
@@ -745,34 +314,10 @@ export class PlayableGameController extends Component {
     this.boundUpgradeStationTrigger = null;
   }
 
-  private bindStoreButton(): void {
-    if (this.storeButton === null || !this.storeButton.isValid) {
-      return;
-    }
-
-    if (this.boundStoreButton === this.storeButton) {
-      return;
-    }
-
-    this.unbindStoreButton();
-    this.storeButton.on(Node.EventType.TOUCH_END, this.openStore, this);
-    this.boundStoreButton = this.storeButton;
-  }
-
-  private unbindStoreButton(): void {
-    if (this.boundStoreButton === null || !this.boundStoreButton.isValid) {
-      this.boundStoreButton = null;
-      return;
-    }
-
-    this.boundStoreButton.off(Node.EventType.TOUCH_END, this.openStore, this);
-    this.boundStoreButton = null;
-  }
-
   private onUpgradeStationTrigger(event: ITriggerEvent): void {
     if (
       event.otherCollider === null ||
-      this.findPlayerInParents(event.otherCollider.node) === null
+      this.sceneRegistry.findPlayerInParents(event.otherCollider.node) === null
     ) {
       return;
     }
@@ -782,116 +327,5 @@ export class PlayableGameController extends Component {
     }
 
     this.tryUpgrade();
-  }
-
-  private findResourceState(resources: ResourceState[], id: string): ResourceState | null {
-    for (const resource of resources) {
-      if (resource.id === id) {
-        return resource;
-      }
-    }
-
-    return null;
-  }
-
-  private findResourcesInTree(root: Node): BreakableResource[] {
-    const result: BreakableResource[] = [];
-    const resource = root.getComponent(BreakableResource);
-
-    if (resource !== null) {
-      result.push(resource);
-    }
-
-    for (const child of root.children) {
-      result.push(...this.findResourcesInTree(child));
-    }
-
-    return result;
-  }
-
-  private findPlayerInParents(node: Node): PlayerController | null {
-    let current: Node | null = node;
-
-    while (current !== null) {
-      const player = current.getComponent(PlayerController);
-
-      if (player !== null) {
-        return player;
-      }
-
-      current = current.parent;
-    }
-
-    return null;
-  }
-
-  private findColliderByNodeName(root: Node, nodeName: string): Collider | null {
-    if (root.name === nodeName) {
-      return root.getComponent(Collider);
-    }
-
-    for (const child of root.children) {
-      const found = this.findColliderByNodeName(child, nodeName);
-
-      if (found !== null) {
-        return found;
-      }
-    }
-
-    return null;
-  }
-
-  private findExitGateInTree(root: Node): ExitGate | null {
-    const gate = root.getComponent(ExitGate);
-
-    if (gate !== null) {
-      return gate;
-    }
-
-    for (const child of root.children) {
-      const found = this.findExitGateInTree(child);
-
-      if (found !== null) {
-        return found;
-      }
-    }
-
-    return null;
-  }
-
-  private findWeaponMountInTree(root: Node): WeaponMount | null {
-    const mount = root.getComponent(WeaponMount);
-
-    if (mount !== null) {
-      return mount;
-    }
-
-    for (const child of root.children) {
-      const found = this.findWeaponMountInTree(child);
-
-      if (found !== null) {
-        return found;
-      }
-    }
-
-    return null;
-  }
-
-  private findPlayerInTree(root: Node): PlayerController | null {
-    const player = root.getComponent(PlayerController);
-
-    if (player !== null) {
-      return player;
-    }
-
-    for (const child of root.children) {
-      const found = this.findPlayerInTree(child);
-
-      if (found !== null) {
-        return found;
-      }
-    }
-
-    return null;
   }
 }

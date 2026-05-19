@@ -3,7 +3,6 @@ import {
   Component,
   instantiate,
   Node,
-  NodePool,
   Prefab,
   Quat,
   SkeletalAnimation,
@@ -11,6 +10,8 @@ import {
   Tween,
   Vec3,
 } from 'cc';
+
+import { AttackSlashFeedback } from './AttackSlashFeedback';
 
 const { ccclass, disallowMultiple, property } = _decorator;
 
@@ -52,15 +53,11 @@ export class WeaponMount extends Component {
 
   private readonly localRotation = new Quat();
   private readonly appliedWeaponScale = new Vec3(1, 1, 1);
-  private readonly attackSlashBaseScale = new Vec3(1, 1, 1);
   private readonly equipFeedback = { scale: 1 };
-  private readonly attackSlashPool = new NodePool();
-  private readonly activeAttackSlashes = new Set<Node>();
+  private readonly attackSlashFeedback = new AttackSlashFeedback();
   private activeWeapon: Node | null = null;
   private animation: SkeletalAnimation | null = null;
   private socketRegistered = false;
-  private attackSlashBaseScaleCaptured = false;
-  private attackSlashRenderWarmupDone = false;
 
   public onLoad(): void {
     this.animation = this.resolveSkeletalAnimation();
@@ -70,8 +67,8 @@ export class WeaponMount extends Component {
   public start(): void {
     this.registerSocket();
     this.equipWeaponLevel(this.initialLevel, false);
-    this.prewarmAttackSlashPool();
-    this.warmupAttackSlashRenderer();
+    this.attackSlashFeedback.prewarm(this.attackSlashPrefab, this.attackSlashPrewarmCount);
+    this.attackSlashFeedback.warmupRenderer(this.attackSlashPrefab, this.getAttackSlashParent());
   }
 
   public lateUpdate(): void {
@@ -79,8 +76,7 @@ export class WeaponMount extends Component {
   }
 
   public onDestroy(): void {
-    this.recycleActiveAttackSlashes();
-    this.attackSlashPool.clear();
+    this.attackSlashFeedback.clear();
   }
 
   public equipWeaponLevel(level: number, animate = true): void {
@@ -111,7 +107,7 @@ export class WeaponMount extends Component {
       this.playEquipFeedback();
     }
 
-    this.prewarmAttackSlashPool();
+    this.attackSlashFeedback.prewarm(this.attackSlashPrefab, this.attackSlashPrewarmCount);
   }
 
   public playEquipFeedback(): void {
@@ -122,34 +118,7 @@ export class WeaponMount extends Component {
   }
 
   public playAttackSlash(): void {
-    if (this.socket === null || this.attackSlashPrefab === null) {
-      return;
-    }
-
-    const slashParent =
-      this.activeWeapon !== null && this.activeWeapon.isValid ? this.activeWeapon : this.socket;
-    const slash = this.getAttackSlashNode();
-
-    if (slash === null) {
-      return;
-    }
-
-    slash.name = 'AttackSlash';
-    slash.active = true;
-    slash.setParent(slashParent, false);
-    slash.setScale(this.attackSlashBaseScale);
-    this.applyLayerRecursive(slash, slashParent.layer);
-    this.activeAttackSlashes.add(slash);
-
-    Tween.stopAllByTarget(slash);
-    tween(slash)
-      .delay(0.24)
-      .call(() => {
-        if (this.activeAttackSlashes.has(slash)) {
-          this.recycleAttackSlash(slash);
-        }
-      })
-      .start();
+    this.attackSlashFeedback.play(this.attackSlashPrefab, this.getAttackSlashParent());
   }
 
   private registerSocket(): void {
@@ -225,7 +194,7 @@ export class WeaponMount extends Component {
   private clearActiveWeapon(): void {
     Tween.stopAllByTarget(this.equipFeedback);
     this.equipFeedback.scale = 1;
-    this.recycleActiveAttackSlashes();
+    this.attackSlashFeedback.recycleActive();
 
     if (this.activeWeapon !== null && this.activeWeapon.isValid) {
       this.activeWeapon.destroy();
@@ -241,107 +210,11 @@ export class WeaponMount extends Component {
     }
   }
 
-  private applyLayerRecursive(root: Node, layer: number): void {
-    root.layer = layer;
-
-    for (const child of root.children) {
-      this.applyLayerRecursive(child, layer);
-    }
-  }
-
-  private prewarmAttackSlashPool(): void {
-    if (this.attackSlashPrefab === null) {
-      return;
+  private getAttackSlashParent(): Node | null {
+    if (this.activeWeapon !== null && this.activeWeapon.isValid) {
+      return this.activeWeapon;
     }
 
-    const targetSize = Math.max(0, Math.floor(this.attackSlashPrewarmCount));
-
-    while (this.attackSlashPool.size() < targetSize) {
-      const slash = instantiate(this.attackSlashPrefab);
-      slash.active = false;
-      this.captureAttackSlashBaseScale(slash);
-      this.attackSlashPool.put(slash);
-    }
-  }
-
-  private getAttackSlashNode(): Node | null {
-    if (this.attackSlashPrefab === null) {
-      return null;
-    }
-
-    const slash =
-      this.attackSlashPool.size() > 0
-        ? this.attackSlashPool.get()
-        : instantiate(this.attackSlashPrefab);
-
-    if (slash === null || !slash.isValid) {
-      return null;
-    }
-
-    this.captureAttackSlashBaseScale(slash);
-    return slash;
-  }
-
-  private warmupAttackSlashRenderer(): void {
-    if (
-      this.attackSlashRenderWarmupDone ||
-      this.socket === null ||
-      this.attackSlashPrefab === null
-    ) {
-      return;
-    }
-
-    const slashParent =
-      this.activeWeapon !== null && this.activeWeapon.isValid ? this.activeWeapon : this.socket;
-    const slash = this.getAttackSlashNode();
-
-    if (slash === null) {
-      return;
-    }
-
-    slash.name = 'AttackSlashWarmup';
-    slash.active = true;
-    slash.setParent(slashParent, false);
-    slash.setScale(0.001, 0.001, 0.001);
-    this.applyLayerRecursive(slash, slashParent.layer);
-    this.activeAttackSlashes.add(slash);
-    this.attackSlashRenderWarmupDone = true;
-    this.scheduleOnce(() => {
-      if (this.activeAttackSlashes.has(slash)) {
-        this.recycleAttackSlash(slash);
-      }
-    }, 0.08);
-  }
-
-  private recycleAttackSlash(slash: Node): void {
-    if (!this.activeAttackSlashes.has(slash)) {
-      return;
-    }
-
-    if (!slash.isValid) {
-      this.activeAttackSlashes.delete(slash);
-      return;
-    }
-
-    Tween.stopAllByTarget(slash);
-    slash.active = false;
-    slash.setScale(this.attackSlashBaseScale);
-    this.activeAttackSlashes.delete(slash);
-    this.attackSlashPool.put(slash);
-  }
-
-  private recycleActiveAttackSlashes(): void {
-    for (const slash of Array.from(this.activeAttackSlashes)) {
-      this.recycleAttackSlash(slash);
-    }
-  }
-
-  private captureAttackSlashBaseScale(slash: Node): void {
-    if (this.attackSlashBaseScaleCaptured) {
-      return;
-    }
-
-    slash.getScale(this.attackSlashBaseScale);
-    this.attackSlashBaseScaleCaptured = true;
+    return this.socket;
   }
 }

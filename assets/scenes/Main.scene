@@ -3584,13 +3584,13 @@
       "r": 255,
       "g": 255,
       "b": 255,
-      "a": 62
+      "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "8b4de567-d8fe-4e90-84c9-f0fc2b90a55d@f9941",
+      "__uuid__": "f3c020f8-0e8e-4cc6-aa8f-66b91445a051@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
-    "_type": 1,
+    "_type": 0,
     "_fillType": 0,
     "_sizeMode": 0,
     "_fillCenter": {
@@ -3693,13 +3693,13 @@
       "r": 255,
       "g": 255,
       "b": 255,
-      "a": 166
+      "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "8b4de567-d8fe-4e90-84c9-f0fc2b90a55d@f9941",
+      "__uuid__": "e983c4bb-ae5e-44ee-944b-55978f6270ad@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
-    "_type": 1,
+    "_type": 0,
     "_fillType": 0,
     "_sizeMode": 0,
     "_fillCenter": {
@@ -4755,6 +4755,10 @@
     },
     "healthBarPrefab": {
       "__uuid__": "7e3279ea-71d5-4df6-a557-b874740b5221",
+      "__expectedType__": "cc.Prefab"
+    },
+    "upgradeStationZonePrefab": {
+      "__uuid__": "3a437f0a-20b6-4e1a-9d0d-3c2e13f1c492",
       "__expectedType__": "cc.Prefab"
     },
     "weaponUpgradePopupPrefab": {

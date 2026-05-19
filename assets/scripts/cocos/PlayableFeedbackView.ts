@@ -3,47 +3,38 @@ import {
   Camera,
   Color,
   Component,
-  director,
-  EventHandler,
   Graphics,
   instantiate,
-  Label,
   Node,
   NodePool,
   Prefab,
-  Sprite,
   tween,
   Tween,
-  UICoordinateTracker,
   UIOpacity,
   UITransform,
   Vec3,
-  view,
-  Widget,
 } from 'cc';
 
-import { HealthBarView } from './HealthBarView';
+import { drawDashedZone } from './DashedZoneRenderer';
+import { FloatingLabelFeedback } from './FloatingLabelFeedback';
+import { ImpactBurstFeedback } from './ImpactBurstFeedback';
+import { applyLayerRecursive } from './NodeLayerUtils';
+import { PlayableFeedbackLayout } from './PlayableFeedbackLayout';
 import { PlayableHudView } from './PlayableHudView';
-import { WeaponUpgradePopupView } from './WeaponUpgradePopupView';
+import { PickupRewardFeedback, type PickupRewardConfig } from './PickupRewardFeedback';
+import { RuntimeHealthBar } from './RuntimeHealthBar';
+import { StarBurstFeedback, type StarBurstConfig } from './StarBurstFeedback';
+import { TransientEffectPools, type TransientRewardKind } from './TransientEffectPools';
+import { UiPopAnimator } from './UiPopAnimator';
+import { WeaponUpgradePopupPresenter } from './WeaponUpgradePopupPresenter';
+import { WorldTrackedZoneView, type WorldTrackedZoneConfig } from './WorldTrackedZoneView';
 
 const { ccclass, disallowMultiple, property } = _decorator;
 
-type RewardKind = 'wood' | 'metal';
+type RewardKind = TransientRewardKind;
 type HealthBarVisibility = 'visible' | 'hide-soon' | 'hidden';
 
-const HUD_TOP_MARGIN = 0;
-const HUD_SIDE_MARGIN = 16;
 const DEFAULT_HUD_TARGET_SCREEN_WIDTH = 396;
-const POPUP_SIDE_MARGIN = 32;
-const POPUP_VERTICAL_MARGIN = 112;
-const POPUP_TARGET_SCREEN_WIDTH = 370;
-const POPUP_TARGET_SCREEN_HEIGHT = 280;
-const UPGRADE_CARD_WIDTH = 440;
-const UPGRADE_CARD_HEIGHT = 328;
-const VICTORY_CONTENT_WIDTH = 360;
-const VICTORY_CONTENT_HEIGHT = 230;
-const VICTORY_TARGET_SCREEN_WIDTH = 340;
-const VICTORY_TARGET_SCREEN_HEIGHT = 210;
 const DEFAULT_UPGRADE_ZONE_WIDTH = 294;
 const DEFAULT_UPGRADE_ZONE_HEIGHT = 162;
 const DEFAULT_UPGRADE_ZONE_RADIUS = 36;
@@ -56,82 +47,6 @@ const TMP_VEC3_A = new Vec3();
 const TMP_VEC3_B = new Vec3();
 const TMP_VEC3_C = new Vec3();
 const TMP_VEC3_D = new Vec3();
-
-function applyLayerRecursive(root: Node, layer: number): void {
-  root.layer = layer;
-
-  for (const child of root.children) {
-    applyLayerRecursive(child, layer);
-  }
-}
-
-class RuntimeHealthBar {
-  private readonly node: Node;
-  private readonly anchorNode: Node;
-  private readonly view: HealthBarView;
-  private readonly tracker: UICoordinateTracker;
-
-  public constructor(parent: Node, name: string, prefab: Prefab, camera: Camera) {
-    this.node = instantiate(prefab);
-    this.node.name = name;
-    applyLayerRecursive(this.node, parent.layer);
-    parent.addChild(this.node);
-
-    const healthBarView = this.node.getComponent(HealthBarView);
-
-    if (healthBarView === null) {
-      this.node.destroy();
-      throw new Error('HealthBar prefab must have HealthBarView attached to its root node.');
-    }
-
-    this.view = healthBarView;
-
-    if (!this.view.resolveReferences()) {
-      this.node.destroy();
-      throw new Error('HealthBarView must reference a cc.ProgressBar component.');
-    }
-
-    this.anchorNode = new Node(`${name}_WorldAnchor`);
-    director.getScene()?.addChild(this.anchorNode);
-
-    this.tracker = this.anchorNode.addComponent(UICoordinateTracker);
-    this.tracker.camera = camera;
-    this.tracker.target = parent;
-    this.tracker.useScale = false;
-    this.tracker.syncEvents = [this.createTrackerSyncEvent()];
-  }
-
-  public setWorldPosition(position: Vec3): void {
-    this.anchorNode.setWorldPosition(position);
-    this.tracker.update();
-  }
-
-  public setProgress(current: number, max: number): void {
-    this.anchorNode.active = true;
-    this.view.setProgress(current, max);
-  }
-
-  public hideAfter(delaySeconds: number): void {
-    this.view.hideAfter(delaySeconds);
-  }
-
-  public setVisible(visible: boolean): void {
-    this.anchorNode.active = visible;
-    this.view.setVisible(visible);
-  }
-
-  public update(deltaTime: number): void {
-    this.view.tick(deltaTime);
-  }
-
-  private createTrackerSyncEvent(): EventHandler {
-    const event = new EventHandler();
-    event.target = this.node;
-    event.component = 'HealthBarView';
-    event.handler = 'handleCoordinateSync';
-    return event;
-  }
-}
 
 @ccclass('PlayableFeedbackView')
 @disallowMultiple
@@ -156,6 +71,9 @@ export class PlayableFeedbackView extends Component {
 
   @property({ type: Prefab })
   public healthBarPrefab: Prefab | null = null;
+
+  @property({ type: Prefab })
+  public upgradeStationZonePrefab: Prefab | null = null;
 
   @property({ type: Prefab })
   public weaponUpgradePopupPrefab: Prefab | null = null;
@@ -263,21 +181,39 @@ export class PlayableFeedbackView extends Component {
   public targetHintBlinkSeconds = 0.16;
 
   private readonly resourceHealthBars = new Map<string, RuntimeHealthBar>();
-  private readonly uiBaseScales = new Map<Node, Vec3>();
-  private readonly woodPickupPool = new NodePool();
-  private readonly metalPickupPool = new NodePool();
-  private readonly impactBurstPool = new NodePool();
-  private readonly starPool = new NodePool();
-  private readonly floatingLabelPool = new NodePool();
-  private readonly activeTransientNodes = new Map<Node, NodePool>();
-  private upgradePopupNode: Node | null = null;
-  private upgradePopupDim: Node | null = null;
-  private upgradePopupCard: Node | null = null;
-  private upgradeStationZoneNode: Node | null = null;
-  private upgradeStationZoneGraphics: Graphics | null = null;
-  private upgradeStationZoneOpacity: UIOpacity | null = null;
-  private upgradeStationZoneAnchor: Node | null = null;
-  private upgradeStationZoneTracker: UICoordinateTracker | null = null;
+  private readonly effectPools = new TransientEffectPools();
+  private readonly layout = new PlayableFeedbackLayout();
+  private readonly popAnimator = new UiPopAnimator();
+  private readonly floatingLabelFeedback = new FloatingLabelFeedback({
+    effectPools: this.effectPools,
+    getFeedbackLayer: () => this.getFeedbackLayer(),
+  });
+  private readonly impactBurstFeedback = new ImpactBurstFeedback({
+    effectPools: this.effectPools,
+    getFeedbackLayer: () => this.getFeedbackLayer(),
+  });
+  private readonly starBurstFeedback = new StarBurstFeedback({
+    effectPools: this.effectPools,
+    getFeedbackLayer: () => this.getFeedbackLayer(),
+  });
+  private readonly pickupRewardFeedback = new PickupRewardFeedback({
+    effectPools: this.effectPools,
+    getFeedbackLayer: () => this.getFeedbackLayer(),
+    getResourceIconFrame: (kind) => this.hudView?.getResourceIconFrame(kind) ?? null,
+    tryGetCounterPosition: (kind, out) => this.tryGetCounterFeedbackPosition(kind, out),
+    spawnLandingStars: (uiPosition) => this.spawnLandingStars(uiPosition),
+    playHudCounterPop: (kind) => this.playHudCounterPop(kind),
+  });
+  private readonly upgradeStationZone = new WorldTrackedZoneView({
+    name: 'UpgradeStationZone',
+    getLayer: () => this.getTargetHintLayer(),
+    getWorldCamera: () => this.worldCamera,
+  });
+  private readonly weaponUpgradePopupPresenter = new WeaponUpgradePopupPresenter({
+    layout: this.layout,
+    getLayer: () => this.getRewardLayer(),
+    getHudCanvas: () => this.hudCanvas,
+  });
   private targetHintNode: Node | null = null;
   private targetHintGraphics: Graphics | null = null;
   private targetHintOpacity: UIOpacity | null = null;
@@ -290,15 +226,8 @@ export class PlayableFeedbackView extends Component {
     DEFAULT_UPGRADE_ZONE_HEIGHT,
     0,
   );
-  private lastLayoutWidth = -1;
-  private lastLayoutHeight = -1;
-  private lastLayoutScaleX = -1;
-  private lastLayoutScaleY = -1;
   private transientRenderWarmupDone = false;
   private gateHealthBar: RuntimeHealthBar | null = null;
-  private completionContentRoot: Node | null = null;
-  private upgradeStationZoneVisible = false;
-  private upgradeStationZonePulseTime = 0;
 
   public hasRequiredReferences(): boolean {
     return (
@@ -310,6 +239,7 @@ export class PlayableFeedbackView extends Component {
       this.hudView !== null &&
       this.hudView.hasRequiredReferences() &&
       this.healthBarPrefab !== null &&
+      this.upgradeStationZonePrefab !== null &&
       this.weaponUpgradePopupPrefab !== null &&
       this.floatingLabelPrefab !== null &&
       this.impactBurstPrefab !== null &&
@@ -323,12 +253,11 @@ export class PlayableFeedbackView extends Component {
       return;
     }
 
-    this.fitHudCanvasToScreen();
-    this.pinTopHudPanel();
-    this.refreshFullscreenLayer(this.feedbackLayer, this.hudCanvas);
-    this.refreshFullscreenLayer(this.rewardLayer, this.hudCanvas);
-    this.refreshFullscreenLayer(this.hudView?.getCompletionOverlay() ?? null, this.hudCanvas);
-    this.refreshCompletionOverlayLayout();
+    this.layout.fitHudCanvasToScreen(this.hudCanvas);
+    this.layout.pinTopHudPanel(this.hudView, this.hudCanvas, this.topHudTargetScreenWidth);
+    this.layout.refreshFullscreenLayer(this.feedbackLayer, this.hudCanvas);
+    this.layout.refreshFullscreenLayer(this.rewardLayer, this.hudCanvas);
+    this.layout.refreshCompletionOverlayLayout(this.hudView, this.hudCanvas);
 
     if (this.feedbackLayer !== null && this.feedbackLayer.isValid) {
       this.feedbackLayer.setSiblingIndex(0);
@@ -338,14 +267,14 @@ export class PlayableFeedbackView extends Component {
       this.rewardLayer.setSiblingIndex(this.hudCanvas.children.length - 1);
     }
 
-    this.refreshUpgradePopupLayout();
+    this.weaponUpgradePopupPresenter.refreshLayout();
     this.refreshUpgradeStationZoneLayout();
     this.refreshTargetHintLayout();
-    this.markLayoutClean();
+    this.layout.markClean();
   }
 
   public refreshLayoutIfNeeded(): void {
-    if (this.shouldRefreshLayout()) {
+    if (this.layout.shouldRefreshLayout()) {
       this.refreshLayout();
     }
   }
@@ -356,53 +285,31 @@ export class PlayableFeedbackView extends Component {
     }
 
     this.gateHealthBar?.update(deltaTime);
-    this.updateUpgradeStationZone(deltaTime);
+    this.upgradeStationZone.update(deltaTime);
   }
 
   public clearTransientFeedback(): void {
-    this.destroyUpgradePopup();
-    this.clearActiveTransientEffects();
+    this.weaponUpgradePopupPresenter.destroy();
+    this.effectPools.clearActive();
     this.setUpgradeStationZone(TMP_VEC3_A, false);
     this.hideTargetHint();
   }
 
   public onDestroy(): void {
-    this.destroyUpgradePopup();
-    this.clearActiveTransientEffects();
-    this.woodPickupPool.clear();
-    this.metalPickupPool.clear();
-    this.impactBurstPool.clear();
-    this.starPool.clear();
-    this.floatingLabelPool.clear();
-    this.destroyUpgradeStationZone();
+    this.weaponUpgradePopupPresenter.destroy();
+    this.effectPools.clearActive();
+    this.effectPools.clearPools();
+    this.upgradeStationZone.destroy();
     this.destroyTargetHint();
   }
 
   public setUpgradeStationZone(worldPosition: Vec3, visible: boolean): void {
-    this.ensureUpgradeStationZone();
-    this.upgradeStationZoneVisible = visible;
-
-    if (
-      this.upgradeStationZoneNode === null ||
-      this.upgradeStationZoneAnchor === null ||
-      this.upgradeStationZoneTracker === null
-    ) {
-      return;
-    }
-
-    this.upgradeStationZoneNode.active = visible;
-    this.upgradeStationZoneAnchor.active = visible;
-
-    if (!visible) {
-      return;
-    }
-
-    this.upgradeStationZoneAnchor.setWorldPosition(worldPosition);
-    this.upgradeStationZoneTracker.update();
-  }
-
-  public handleUpgradeStationZoneCoordinateSync(position: Vec3): void {
-    this.upgradeStationZoneNode?.setPosition(position);
+    this.upgradeStationZone.setVisible(
+      worldPosition,
+      visible,
+      this.upgradeStationZonePrefab,
+      this.getUpgradeStationZoneConfig(),
+    );
   }
 
   public prepareTargetHint(prefab: Prefab | null): void {
@@ -516,10 +423,20 @@ export class PlayableFeedbackView extends Component {
 
     this.prewarmPickupPool('wood', layer);
     this.prewarmPickupPool('metal', layer);
-    this.prewarmPool(this.impactBurstPool, this.impactBurstPrefab, layer, this.impactPrewarmCount);
-    this.prewarmPool(this.starPool, this.starBurstPrefab, layer, this.starPrewarmCount);
-    this.prewarmPool(
-      this.floatingLabelPool,
+    this.effectPools.prewarmPool(
+      this.effectPools.impactBurstPool,
+      this.impactBurstPrefab,
+      layer,
+      this.impactPrewarmCount,
+    );
+    this.effectPools.prewarmPool(
+      this.effectPools.starPool,
+      this.starBurstPrefab,
+      layer,
+      this.starPrewarmCount,
+    );
+    this.effectPools.prewarmPool(
+      this.effectPools.floatingLabelPool,
       this.floatingLabelPrefab,
       layer,
       this.floatingLabelPrewarmCount,
@@ -538,11 +455,16 @@ export class PlayableFeedbackView extends Component {
     }
 
     const warmupNodes: Array<{ node: Node; pool: NodePool }> = [];
-    this.addPooledWarmupNode(warmupNodes, this.impactBurstPool, this.impactBurstPrefab, layer);
-    this.addPooledWarmupNode(warmupNodes, this.starPool, this.starBurstPrefab, layer);
+    this.addPooledWarmupNode(
+      warmupNodes,
+      this.effectPools.impactBurstPool,
+      this.impactBurstPrefab,
+      layer,
+    );
+    this.addPooledWarmupNode(warmupNodes, this.effectPools.starPool, this.starBurstPrefab, layer);
     this.addPickupWarmupNode(warmupNodes, 'wood', layer);
     this.addPickupWarmupNode(warmupNodes, 'metal', layer);
-    this.addFloatingLabelWarmupNode(warmupNodes, layer);
+    this.floatingLabelFeedback.addWarmupNode(warmupNodes, layer, this.floatingLabelPrefab);
 
     if (warmupNodes.length === 0) {
       return;
@@ -551,7 +473,7 @@ export class PlayableFeedbackView extends Component {
     this.transientRenderWarmupDone = true;
     this.scheduleOnce(() => {
       for (const { node, pool } of warmupNodes) {
-        this.recycleEffectNode(pool, node);
+        this.effectPools.recycle(pool, node);
       }
     }, 0.08);
   }
@@ -615,47 +537,7 @@ export class PlayableFeedbackView extends Component {
       return;
     }
 
-    const layer = this.getFeedbackLayer();
-
-    if (layer === null) {
-      return;
-    }
-
-    const node = this.getPooledEffectNode(this.floatingLabelPool, this.floatingLabelPrefab, layer);
-
-    if (node === null) {
-      return;
-    }
-
-    node.name = 'FloatingLabel';
-    node.setPosition(TMP_VEC3_A);
-    node.setScale(0.85, 0.85, 1);
-
-    const label = node.getComponent(Label);
-    const opacity = node.getComponent(UIOpacity);
-
-    if (label === null || opacity === null) {
-      this.recycleEffectNode(this.floatingLabelPool, node);
-      return;
-    }
-
-    Tween.stopAllByTarget(node);
-    Tween.stopAllByTarget(opacity);
-    label.string = text;
-    label.color = color;
-    opacity.opacity = 255;
-
-    const endPosition = TMP_VEC3_A.clone();
-    endPosition.y += 62;
-
-    tween(node)
-      .to(0.1, { scale: new Vec3(1.12, 1.12, 1) }, { easing: 'backOut' })
-      .start();
-    tween(node)
-      .to(0.48, { position: endPosition }, { easing: 'quadOut' })
-      .call(() => this.recycleEffectNode(this.floatingLabelPool, node))
-      .start();
-    tween(opacity).delay(0.2).to(0.24, { opacity: 0 }, { easing: 'quadIn' }).start();
+    this.floatingLabelFeedback.spawn(text, TMP_VEC3_A, color, this.floatingLabelPrefab);
   }
 
   public spawnImpactBurst(worldPosition: Vec3, scale = 1): void {
@@ -663,38 +545,7 @@ export class PlayableFeedbackView extends Component {
       return;
     }
 
-    const layer = this.getFeedbackLayer();
-
-    if (layer === null) {
-      return;
-    }
-
-    const node = this.getPooledEffectNode(this.impactBurstPool, this.impactBurstPrefab, layer);
-
-    if (node === null) {
-      return;
-    }
-
-    node.name = 'ImpactBurst';
-    node.setPosition(TMP_VEC3_A);
-    node.setScale(0.35 * scale, 0.35 * scale, 1);
-
-    const opacity = node.getComponent(UIOpacity);
-
-    if (opacity === null) {
-      this.recycleEffectNode(this.impactBurstPool, node);
-      return;
-    }
-
-    Tween.stopAllByTarget(node);
-    Tween.stopAllByTarget(opacity);
-    opacity.opacity = 255;
-
-    tween(node)
-      .to(0.18, { scale: new Vec3(1.2 * scale, 1.2 * scale, 1) }, { easing: 'quadOut' })
-      .call(() => this.recycleEffectNode(this.impactBurstPool, node))
-      .start();
-    tween(opacity).to(0.18, { opacity: 0 }, { easing: 'quadIn' }).start();
+    this.impactBurstFeedback.spawn(TMP_VEC3_A, this.impactBurstPrefab, scale);
   }
 
   public spawnPickupRewards(kind: RewardKind, sourceWorldPosition: Vec3): void {
@@ -702,17 +553,12 @@ export class PlayableFeedbackView extends Component {
       return;
     }
 
-    const targetPosition = new Vec3();
-
-    if (!this.tryGetCounterFeedbackPosition(kind, targetPosition)) {
-      targetPosition.set(TMP_VEC3_A.x, TMP_VEC3_A.y + 120, 0);
-    }
-
-    const count = Math.floor(Math.random() * 3) + 1;
-
-    for (let index = 0; index < count; index += 1) {
-      this.spawnPickupBadge(kind, TMP_VEC3_A, targetPosition, index, count);
-    }
+    this.pickupRewardFeedback.spawnRewards(
+      kind,
+      TMP_VEC3_A,
+      this.pickupBadgePrefab,
+      this.getPickupRewardConfig(),
+    );
   }
 
   public spawnHitStars(worldPosition: Vec3): void {
@@ -720,15 +566,7 @@ export class PlayableFeedbackView extends Component {
       return;
     }
 
-    this.spawnStarBurstAtUiPosition(
-      TMP_VEC3_A,
-      this.hitStarMinCount,
-      this.hitStarMaxCount,
-      72,
-      148,
-      0.9,
-      1.35,
-    );
+    this.starBurstFeedback.spawn(TMP_VEC3_A, this.starBurstPrefab, this.getHitStarConfig());
   }
 
   public playWeaponUpgrade(
@@ -737,9 +575,15 @@ export class PlayableFeedbackView extends Component {
     unlockText: string,
     powerBonus: number,
   ): void {
-    this.playNodePop(this.hudView?.getWeaponCounterNode() ?? null);
-    this.playNodePop(this.hudView?.getObjectiveFeedbackNode() ?? null);
-    this.showWeaponUpgradePopup(level, weaponName, unlockText, powerBonus);
+    this.popAnimator.play(this.hudView?.getWeaponCounterNode() ?? null);
+    this.popAnimator.play(this.hudView?.getObjectiveFeedbackNode() ?? null);
+    this.weaponUpgradePopupPresenter.show(
+      this.weaponUpgradePopupPrefab,
+      level,
+      weaponName,
+      unlockText,
+      powerBonus,
+    );
   }
 
   private applyHealthBarVisibility(
@@ -760,79 +604,13 @@ export class PlayableFeedbackView extends Component {
     bar.setVisible(false);
   }
 
-  private spawnPickupBadge(
-    kind: RewardKind,
-    startPosition: Vec3,
-    targetPosition: Vec3,
-    index: number,
-    count: number,
-  ): void {
-    const layer = this.getFeedbackLayer();
-
-    if (layer === null || this.pickupBadgePrefab === null) {
-      return;
-    }
-
-    const pickupPool = this.getPickupPool(kind);
-    const node = this.getPooledEffectNode(pickupPool, this.pickupBadgePrefab, layer);
-
-    if (node === null) {
-      return;
-    }
-
-    node.name = `Pickup_${kind}`;
-    node.setPosition(startPosition);
-    node.setScale(0.18, 0.18, 1);
-    node.setRotationFromEuler(0, 0, this.getRandomRange(-14, 14));
-
-    if (!this.configurePickupBadge(node, kind)) {
-      this.recycleEffectNode(pickupPool, node);
-      return;
-    }
-
-    const offsetIndex = index - (count - 1) / 2;
-    const side = offsetIndex === 0 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(offsetIndex);
-    const scatterDistance =
-      this.getRandomRange(this.pickupMinScatterDistance, this.pickupMaxScatterDistance) +
-      Math.abs(offsetIndex) * 22;
-    const landingPosition = startPosition.clone();
-    landingPosition.x += side * scatterDistance + this.getRandomRange(-28, 28);
-    landingPosition.y -= this.getRandomRange(
-      this.pickupMinFallDistance,
-      this.pickupMaxFallDistance,
-    );
-
-    const apexPosition = startPosition.clone();
-    apexPosition.x += (landingPosition.x - startPosition.x) * this.getRandomRange(0.34, 0.52);
-    apexPosition.y += this.getRandomRange(this.pickupMinArcHeight, this.pickupMaxArcHeight);
-
-    const squashScale = this.getRandomRange(0.82, 0.94);
-
-    tween(node)
-      .delay(index * 0.025)
-      .to(0.16, { position: apexPosition, scale: new Vec3(1.08, 1.08, 1) }, { easing: 'quadOut' })
-      .to(
-        0.24,
-        { position: landingPosition, scale: new Vec3(squashScale, squashScale, 1) },
-        { easing: 'quadIn' },
-      )
-      .call(() => this.spawnLandingStars(landingPosition))
-      .delay(0.16)
-      .to(0.34, { position: targetPosition, scale: new Vec3(0.34, 0.34, 1) }, { easing: 'quadIn' })
-      .call(() => {
-        this.playHudCounterPop(kind);
-        this.recycleEffectNode(pickupPool, node);
-      })
-      .start();
-  }
-
   private addPooledWarmupNode(
     warmupNodes: Array<{ node: Node; pool: NodePool }>,
     pool: NodePool,
     prefab: Prefab | null,
     layer: Node,
   ): void {
-    const node = this.getPooledEffectNode(pool, prefab, layer);
+    const node = this.effectPools.getNode(pool, prefab, layer);
 
     if (node === null) {
       return;
@@ -856,366 +634,67 @@ export class PlayableFeedbackView extends Component {
     kind: RewardKind,
     layer: Node,
   ): void {
-    const pool = this.getPickupPool(kind);
-    const node = this.getPooledEffectNode(pool, this.pickupBadgePrefab, layer);
-
-    if (node === null) {
-      return;
-    }
-
-    if (!this.configurePickupBadge(node, kind)) {
-      this.recycleEffectNode(pool, node);
-      return;
-    }
-
-    node.name = `RenderWarmup_${kind}`;
-    node.setPosition(0, 0, 0);
-    node.setScale(0.001, 0.001, 1);
-    warmupNodes.push({ node, pool });
-  }
-
-  private addFloatingLabelWarmupNode(
-    warmupNodes: Array<{ node: Node; pool: NodePool }>,
-    layer: Node,
-  ): void {
-    const node = this.getPooledEffectNode(this.floatingLabelPool, this.floatingLabelPrefab, layer);
-
-    if (node === null) {
-      return;
-    }
-
-    const label = node.getComponent(Label);
-    const opacity = node.getComponent(UIOpacity);
-
-    if (label === null || opacity === null) {
-      this.recycleEffectNode(this.floatingLabelPool, node);
-      return;
-    }
-
-    node.name = 'RenderWarmup_Label';
-    node.setPosition(0, 0, 0);
-    node.setScale(0.001, 0.001, 1);
-    label.string = '0123456789LVUPGRADE';
-    label.color = Color.WHITE;
-    opacity.opacity = 255;
-    warmupNodes.push({ node, pool: this.floatingLabelPool });
+    this.pickupRewardFeedback.addWarmupNode(warmupNodes, kind, layer, this.pickupBadgePrefab);
   }
 
   private spawnLandingStars(uiPosition: Vec3): void {
-    this.spawnStarBurstAtUiPosition(
-      uiPosition,
-      this.landingStarMinCount,
-      this.landingStarMaxCount,
-      34,
-      72,
-      0.58,
-      0.86,
-    );
+    this.starBurstFeedback.spawn(uiPosition, this.starBurstPrefab, this.getLandingStarConfig());
   }
 
-  private spawnStarBurstAtUiPosition(
-    uiPosition: Vec3,
-    minCount: number,
-    maxCount: number,
-    minDistance: number,
-    maxDistance: number,
-    minScale: number,
-    maxScale: number,
-  ): void {
-    const layer = this.getFeedbackLayer();
-
-    if (layer === null || this.starBurstPrefab === null) {
-      return;
-    }
-
-    const count = this.getRandomInteger(minCount, maxCount);
-
-    for (let index = 0; index < count; index += 1) {
-      const node = this.getPooledEffectNode(this.starPool, this.starBurstPrefab, layer);
-
-      if (node === null) {
-        return;
-      }
-
-      const opacity = node.getComponent(UIOpacity);
-
-      if (opacity === null) {
-        this.recycleEffectNode(this.starPool, node);
-        continue;
-      }
-
-      const angle = (Math.PI * 2 * index) / count + this.getRandomRange(-0.42, 0.42);
-      const distance = this.getRandomRange(minDistance, maxDistance);
-      const targetPosition = new Vec3(
-        uiPosition.x + Math.cos(angle) * distance,
-        uiPosition.y + Math.sin(angle) * distance,
-        uiPosition.z,
-      );
-      const scale = this.getRandomRange(minScale, maxScale);
-
-      Tween.stopAllByTarget(node);
-      Tween.stopAllByTarget(opacity);
-      node.setPosition(uiPosition);
-      node.setScale(scale, scale, 1);
-      node.setRotationFromEuler(0, 0, this.getRandomRange(-35, 35));
-      opacity.opacity = 245;
-
-      tween(node)
-        .to(0.84, { position: targetPosition, scale: Vec3.ZERO }, { easing: 'quadOut' })
-        .call(() => this.recycleEffectNode(this.starPool, node))
-        .start();
-      tween(opacity).delay(0.24).to(0.52, { opacity: 0 }, { easing: 'quadIn' }).start();
-    }
+  private getHitStarConfig(): StarBurstConfig {
+    return {
+      minCount: this.hitStarMinCount,
+      maxCount: this.hitStarMaxCount,
+      minDistance: 72,
+      maxDistance: 148,
+      minScale: 0.9,
+      maxScale: 1.35,
+    };
   }
 
-  private configurePickupBadge(root: Node, kind: RewardKind): boolean {
-    const background = root.getChildByName('Background')?.getComponent(Sprite) ?? null;
-    const label = root.getChildByName('Text')?.getComponent(Label) ?? null;
-    const iconFrame = this.getResourceIconFrame(kind);
-
-    if (background === null || label === null) {
-      return false;
-    }
-
-    if (iconFrame === null) {
-      return false;
-    }
-
-    background.spriteFrame = iconFrame;
-    background.sizeMode = Sprite.SizeMode.CUSTOM;
-    background.color = Color.WHITE;
-    label.node.active = false;
-    return true;
-  }
-
-  private getResourceIconFrame(kind: RewardKind) {
-    return this.hudView?.getResourceIconFrame(kind) ?? null;
+  private getLandingStarConfig(): StarBurstConfig {
+    return {
+      minCount: this.landingStarMinCount,
+      maxCount: this.landingStarMaxCount,
+      minDistance: 34,
+      maxDistance: 72,
+      minScale: 0.58,
+      maxScale: 0.86,
+    };
   }
 
   private prewarmPickupPool(kind: RewardKind, layer: Node): void {
-    if (this.pickupBadgePrefab === null) {
-      return;
-    }
-
-    const pool = this.getPickupPool(kind);
-    const targetSize = Math.max(0, Math.floor(this.pickupPrewarmCountPerResource));
-
-    while (pool.size() < targetSize) {
-      const node = instantiate(this.pickupBadgePrefab);
-      node.active = false;
-      applyLayerRecursive(node, layer.layer);
-
-      if (!this.configurePickupBadge(node, kind)) {
-        node.destroy();
-        return;
-      }
-
-      pool.put(node);
-    }
+    this.pickupRewardFeedback.prewarmPool(
+      kind,
+      layer,
+      this.pickupBadgePrefab,
+      this.pickupPrewarmCountPerResource,
+    );
   }
 
-  private getPickupPool(kind: RewardKind): NodePool {
-    return kind === 'wood' ? this.woodPickupPool : this.metalPickupPool;
+  private getPickupRewardConfig(): PickupRewardConfig {
+    return {
+      minScatterDistance: this.pickupMinScatterDistance,
+      maxScatterDistance: this.pickupMaxScatterDistance,
+      minArcHeight: this.pickupMinArcHeight,
+      maxArcHeight: this.pickupMaxArcHeight,
+      minFallDistance: this.pickupMinFallDistance,
+      maxFallDistance: this.pickupMaxFallDistance,
+    };
   }
 
-  private prewarmPool(
-    pool: NodePool,
-    prefab: Prefab | null,
-    layer: Node,
-    targetSize: number,
-  ): void {
-    if (prefab === null) {
-      return;
-    }
-
-    const normalizedTargetSize = Math.max(0, Math.floor(targetSize));
-
-    while (pool.size() < normalizedTargetSize) {
-      const node = instantiate(prefab);
-      node.active = false;
-      applyLayerRecursive(node, layer.layer);
-      pool.put(node);
-    }
-  }
-
-  private getPooledEffectNode(pool: NodePool, prefab: Prefab | null, layer: Node): Node | null {
-    if (prefab === null) {
-      return null;
-    }
-
-    const node = pool.size() > 0 ? pool.get() : instantiate(prefab);
-
-    if (node === null || !node.isValid) {
-      return null;
-    }
-
-    node.active = true;
-    applyLayerRecursive(node, layer.layer);
-    layer.addChild(node);
-    this.activeTransientNodes.set(node, pool);
-    return node;
-  }
-
-  private recycleEffectNode(pool: NodePool, node: Node): void {
-    if (!node.isValid) {
-      return;
-    }
-
-    Tween.stopAllByTarget(node);
-    const opacity = node.getComponent(UIOpacity);
-
-    if (opacity !== null) {
-      Tween.stopAllByTarget(opacity);
-    }
-
-    node.active = false;
-    this.activeTransientNodes.delete(node);
-    pool.put(node);
-  }
-
-  private clearActiveTransientEffects(): void {
-    for (const [node] of Array.from(this.activeTransientNodes)) {
-      if (!node.isValid) {
-        continue;
-      }
-
-      Tween.stopAllByTarget(node);
-      const opacity = node.getComponent(UIOpacity);
-
-      if (opacity !== null) {
-        Tween.stopAllByTarget(opacity);
-      }
-
-      node.destroy();
-    }
-
-    this.activeTransientNodes.clear();
-  }
-
-  private getRandomRange(min: number, max: number): number {
-    const lower = Math.min(min, max);
-    const upper = Math.max(min, max);
-    return lower + Math.random() * (upper - lower);
-  }
-
-  private getRandomInteger(min: number, max: number): number {
-    const lower = Math.ceil(Math.min(min, max));
-    const upper = Math.floor(Math.max(min, max));
-    return lower + Math.floor(Math.random() * (upper - lower + 1));
-  }
-
-  private showWeaponUpgradePopup(
-    level: number,
-    weaponName: string,
-    unlockText: string,
-    powerBonus: number,
-  ): void {
-    const layer = this.getRewardLayer();
-
-    if (layer === null || this.weaponUpgradePopupPrefab === null) {
-      return;
-    }
-
-    this.destroyUpgradePopup();
-
-    const root = instantiate(this.weaponUpgradePopupPrefab);
-    root.name = 'WeaponUpgradePopup';
-    applyLayerRecursive(root, layer.layer);
-    layer.addChild(root);
-
-    const popupView = root.getComponent(WeaponUpgradePopupView);
-    const opacity = root.getComponent(UIOpacity);
-
-    if (popupView === null || opacity === null || !popupView.hasRequiredReferences()) {
-      root.destroy();
-      return;
-    }
-
-    opacity.opacity = 0;
-    popupView.applyContent(level, weaponName, unlockText, powerBonus);
-    popupView.clearWeaponIcon();
-    this.populateWeaponIcon(popupView, level);
-
-    this.upgradePopupNode = root;
-    this.upgradePopupDim = popupView.dimmer;
-    this.upgradePopupCard = popupView.card;
-    this.refreshUpgradePopupLayout();
-
-    const targetScale = this.getUpgradePopupScale();
-    tween(opacity).to(0.12, { opacity: 255 }, { easing: 'quadOut' }).start();
-
-    if (popupView.card !== null) {
-      popupView.card.setScale(targetScale * 0.78, targetScale * 0.78, 1);
-      tween(popupView.card)
-        .to(
-          0.2,
-          { scale: new Vec3(targetScale * 1.05, targetScale * 1.05, 1) },
-          { easing: 'backOut' },
-        )
-        .to(0.08, { scale: new Vec3(targetScale, targetScale, 1) }, { easing: 'quadIn' })
-        .delay(1.02)
-        .to(
-          0.16,
-          { scale: new Vec3(targetScale * 0.92, targetScale * 0.92, 1) },
-          { easing: 'quadIn' },
-        )
-        .start();
-    }
-
-    tween(opacity).delay(1.3).to(0.16, { opacity: 0 }, { easing: 'quadIn' }).start();
-    tween(root)
-      .delay(1.5)
-      .call(() => {
-        if (this.upgradePopupNode === root) {
-          this.upgradePopupNode = null;
-          this.upgradePopupDim = null;
-          this.upgradePopupCard = null;
-        }
-
-        root.destroy();
-      })
-      .start();
-  }
-
-  private populateWeaponIcon(popupView: WeaponUpgradePopupView, level: number): void {
-    const iconRoot = popupView.weaponIconRoot;
-    if (iconRoot === null || !popupView.applyWeaponIcon(level)) {
-      return;
-    }
-
-    Tween.stopAllByTarget(iconRoot);
-    iconRoot.setScale(0.72, 0.72, 1);
-    tween(iconRoot)
-      .to(0.2, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' })
-      .start();
+  private getUpgradeStationZoneConfig(): WorldTrackedZoneConfig {
+    return {
+      width: this.upgradeStationZoneWidth,
+      height: this.upgradeStationZoneHeight,
+      radius: this.upgradeStationZoneRadius,
+      dashLength: this.upgradeStationZoneDashLength,
+      gapLength: this.upgradeStationZoneGapLength,
+    };
   }
 
   private playHudCounterPop(kind: RewardKind): void {
-    this.playNodePop(this.hudView?.getResourceCounterNode(kind) ?? null);
-  }
-
-  private playNodePop(node: Node | null): void {
-    if (node === null) {
-      return;
-    }
-
-    let baseScale = this.uiBaseScales.get(node);
-
-    if (baseScale === undefined) {
-      baseScale = new Vec3();
-      node.getScale(baseScale);
-      this.uiBaseScales.set(node, baseScale.clone());
-    }
-
-    const enlargedScale = new Vec3(baseScale.x * 1.16, baseScale.y * 1.16, baseScale.z);
-
-    Tween.stopAllByTarget(node);
-    node.setScale(baseScale);
-
-    tween(node)
-      .to(0.08, { scale: enlargedScale }, { easing: 'quadOut' })
-      .to(0.12, { scale: baseScale.clone() }, { easing: 'quadIn' })
-      .start();
+    this.popAnimator.play(this.hudView?.getResourceCounterNode(kind) ?? null);
   }
 
   private tryWorldToFeedbackPosition(worldPosition: Vec3, out: Vec3): boolean {
@@ -1292,238 +771,12 @@ export class PlayableFeedbackView extends Component {
     return this.gateHealthBar;
   }
 
-  private refreshUpgradePopupLayout(): void {
-    if (this.upgradePopupNode === null || !this.upgradePopupNode.isValid) {
-      return;
-    }
-
-    const target = this.rewardLayer ?? this.hudCanvas;
-
-    if (target === null) {
-      return;
-    }
-
-    this.refreshFullscreenLayer(this.upgradePopupNode, target);
-
-    const dim =
-      this.upgradePopupDim !== null && this.upgradePopupDim.isValid
-        ? this.upgradePopupDim
-        : this.upgradePopupNode.getChildByName('Dim');
-
-    if (dim !== null) {
-      this.refreshFullscreenLayer(dim, this.upgradePopupNode);
-      dim.setSiblingIndex(0);
-    }
-
-    if (this.upgradePopupCard !== null && this.upgradePopupCard.isValid) {
-      const scale = this.getUpgradePopupScale();
-      this.upgradePopupCard.setScale(scale, scale, 1);
-      this.upgradePopupCard.setPosition(0, 0, 0);
-    }
-  }
-
-  private getUpgradePopupScale(): number {
-    const availableWidth = Math.max(1, this.getHudWidth() - POPUP_SIDE_MARGIN * 2);
-    const availableHeight = Math.max(1, this.getHudHeight() - POPUP_VERTICAL_MARGIN * 2);
-    const fitCanvasScale = Math.min(
-      availableWidth / UPGRADE_CARD_WIDTH,
-      availableHeight / UPGRADE_CARD_HEIGHT,
-    );
-    const fitScreenScale = Math.min(
-      this.getScreenWidthScale(UPGRADE_CARD_WIDTH, POPUP_TARGET_SCREEN_WIDTH),
-      this.getScreenHeightScale(UPGRADE_CARD_HEIGHT, POPUP_TARGET_SCREEN_HEIGHT),
-    );
-
-    return Math.min(0.92, Math.max(0.56, Math.min(fitCanvasScale, fitScreenScale)));
-  }
-
-  private fitHudCanvasToScreen(): void {
-    if (this.hudCanvas === null) {
-      return;
-    }
-
-    const widget = this.hudCanvas.getComponent(Widget);
-
-    if (widget === null) {
-      return;
-    }
-
-    widget.target = null;
-    widget.isAlignTop = true;
-    widget.top = 0;
-    widget.isAlignBottom = true;
-    widget.bottom = 0;
-    widget.isAlignLeft = true;
-    widget.left = 0;
-    widget.isAlignRight = true;
-    widget.right = 0;
-    widget.isAlignHorizontalCenter = false;
-    widget.isAlignVerticalCenter = false;
-    widget.alignMode = Widget.AlignMode.ALWAYS;
-    widget.updateAlignment();
-  }
-
-  private pinTopHudPanel(): void {
-    const panel = this.hudView?.getTopPanelNode() ?? null;
-
-    if (panel === null) {
-      return;
-    }
-
-    const widget = panel.getComponent(Widget);
-
-    if (widget === null) {
-      return;
-    }
-
-    widget.target = this.hudCanvas;
-    widget.isAlignTop = true;
-    widget.top = HUD_TOP_MARGIN;
-    widget.isAlignBottom = false;
-    widget.isAlignLeft = false;
-    widget.isAlignRight = false;
-    widget.isAlignHorizontalCenter = true;
-    widget.horizontalCenter = 0;
-    widget.isAlignVerticalCenter = false;
-    widget.alignMode = Widget.AlignMode.ALWAYS;
-    widget.updateAlignment();
-
-    const transform = panel.getComponent(UITransform);
-    const canvasWidth = this.getHudWidth();
-    const panelWidth = transform?.contentSize.width ?? 360;
-    const fitCanvasScale = (canvasWidth - HUD_SIDE_MARGIN * 2) / panelWidth;
-    const fitScreenScale = this.getScreenWidthScale(panelWidth, this.topHudTargetScreenWidth);
-    const scale = Math.min(1, Math.max(0.58, Math.min(fitCanvasScale, fitScreenScale)));
-    panel.setScale(scale, scale, 1);
-  }
-
-  private refreshCompletionOverlayLayout(): void {
-    const overlay = this.hudView?.getCompletionOverlay() ?? null;
-
-    if (overlay === null || !overlay.isValid) {
-      this.completionContentRoot = null;
-      return;
-    }
-
-    const dimmer = overlay.getChildByName('VictoryDimmer');
-
-    if (dimmer !== null) {
-      this.refreshFullscreenLayer(dimmer, overlay);
-      dimmer.setSiblingIndex(0);
-    }
-
-    const contentRoot = this.getCompletionContentRoot(overlay);
-
-    if (contentRoot === null) {
-      return;
-    }
-
-    const scale = this.getCompletionOverlayScale();
-    contentRoot.setPosition(0, 0, 0);
-    contentRoot.setScale(scale, scale, 1);
-    contentRoot.setSiblingIndex(overlay.children.length - 1);
-  }
-
-  private getCompletionContentRoot(overlay: Node): Node | null {
-    if (this.completionContentRoot !== null && this.completionContentRoot.isValid) {
-      return this.completionContentRoot;
-    }
-
-    const contentRoot = overlay.getChildByName('VictoryContentRoot');
-
-    this.completionContentRoot = contentRoot;
-    return contentRoot;
-  }
-
-  private getCompletionOverlayScale(): number {
-    const availableWidth = Math.max(1, this.getHudWidth() - POPUP_SIDE_MARGIN * 2);
-    const availableHeight = Math.max(1, this.getHudHeight() - POPUP_VERTICAL_MARGIN * 2);
-    const fitCanvasScale = Math.min(
-      availableWidth / VICTORY_CONTENT_WIDTH,
-      availableHeight / VICTORY_CONTENT_HEIGHT,
-    );
-    const fitScreenScale = Math.min(
-      this.getScreenWidthScale(VICTORY_CONTENT_WIDTH, VICTORY_TARGET_SCREEN_WIDTH),
-      this.getScreenHeightScale(VICTORY_CONTENT_HEIGHT, VICTORY_TARGET_SCREEN_HEIGHT),
-    );
-
-    return Math.min(1, Math.max(0.58, Math.min(fitCanvasScale, fitScreenScale)));
-  }
-
-  private shouldRefreshLayout(): boolean {
-    const visibleSize = view.getVisibleSize();
-    const scaleX = view.getScaleX();
-    const scaleY = view.getScaleY();
-
-    return (
-      Math.abs(visibleSize.width - this.lastLayoutWidth) > 0.5 ||
-      Math.abs(visibleSize.height - this.lastLayoutHeight) > 0.5 ||
-      Math.abs(scaleX - this.lastLayoutScaleX) > 0.0001 ||
-      Math.abs(scaleY - this.lastLayoutScaleY) > 0.0001
-    );
-  }
-
-  private markLayoutClean(): void {
-    const visibleSize = view.getVisibleSize();
-    this.lastLayoutWidth = visibleSize.width;
-    this.lastLayoutHeight = visibleSize.height;
-    this.lastLayoutScaleX = view.getScaleX();
-    this.lastLayoutScaleY = view.getScaleY();
-  }
-
-  private getScreenWidthScale(contentWidth: number, targetScreenWidth: number): number {
-    return targetScreenWidth / Math.max(1, contentWidth * Math.max(0.0001, view.getScaleX()));
-  }
-
-  private getScreenHeightScale(contentHeight: number, targetScreenHeight: number): number {
-    return targetScreenHeight / Math.max(1, contentHeight * Math.max(0.0001, view.getScaleY()));
-  }
-
-  private refreshFullscreenLayer(node: Node | null, target: Node | null): void {
-    if (node === null || target === null || !node.isValid || !target.isValid) {
-      return;
-    }
-
-    const targetTransform = target.getComponent(UITransform);
-    const layerTransform = node.getComponent(UITransform);
-
-    if (layerTransform === null) {
-      return;
-    }
-
-    if (targetTransform !== null) {
-      layerTransform.setContentSize(targetTransform.contentSize);
-    }
-
-    node.setPosition(0, 0, 0);
-
-    const widget = node.getComponent(Widget);
-
-    if (widget === null) {
-      return;
-    }
-
-    widget.target = target;
-    widget.isAlignTop = true;
-    widget.top = 0;
-    widget.isAlignBottom = true;
-    widget.bottom = 0;
-    widget.isAlignLeft = true;
-    widget.left = 0;
-    widget.isAlignRight = true;
-    widget.right = 0;
-    widget.isAlignHorizontalCenter = false;
-    widget.isAlignVerticalCenter = false;
-    widget.alignMode = Widget.AlignMode.ALWAYS;
-    widget.updateAlignment();
-  }
-
   private getRewardLayer(): Node | null {
     if (this.rewardLayer === null || !this.rewardLayer.isValid) {
       return null;
     }
 
-    this.refreshFullscreenLayer(this.rewardLayer, this.hudCanvas);
+    this.layout.refreshFullscreenLayer(this.rewardLayer, this.hudCanvas);
     this.rewardLayer.setSiblingIndex((this.hudCanvas?.children.length ?? 1) - 1);
 
     return this.rewardLayer;
@@ -1534,7 +787,7 @@ export class PlayableFeedbackView extends Component {
       return null;
     }
 
-    this.refreshFullscreenLayer(this.feedbackLayer, this.hudCanvas);
+    this.layout.refreshFullscreenLayer(this.feedbackLayer, this.hudCanvas);
     this.feedbackLayer.setSiblingIndex(0);
 
     return this.feedbackLayer;
@@ -1545,7 +798,7 @@ export class PlayableFeedbackView extends Component {
       return null;
     }
 
-    this.refreshFullscreenLayer(this.targetHintLayer, this.targetHintLayer.parent);
+    this.layout.refreshFullscreenLayer(this.targetHintLayer, this.targetHintLayer.parent);
     return this.targetHintLayer;
   }
 
@@ -1628,91 +881,8 @@ export class PlayableFeedbackView extends Component {
     }
   }
 
-  private ensureUpgradeStationZone(): void {
-    if (
-      this.upgradeStationZoneNode !== null &&
-      this.upgradeStationZoneNode.isValid &&
-      this.upgradeStationZoneGraphics !== null
-    ) {
-      return;
-    }
-
-    const layer = this.getTargetHintLayer();
-
-    if (layer === null || this.worldCamera === null) {
-      return;
-    }
-
-    this.upgradeStationZoneNode = new Node('UpgradeStationZone');
-    this.upgradeStationZoneNode.layer = layer.layer;
-    layer.addChild(this.upgradeStationZoneNode);
-    this.upgradeStationZoneNode.active = false;
-
-    const transform = this.upgradeStationZoneNode.addComponent(UITransform);
-    transform.setContentSize(this.upgradeStationZoneWidth, this.upgradeStationZoneHeight);
-
-    this.upgradeStationZoneOpacity = this.upgradeStationZoneNode.addComponent(UIOpacity);
-    this.upgradeStationZoneOpacity.opacity = 0;
-
-    this.upgradeStationZoneGraphics = this.upgradeStationZoneNode.addComponent(Graphics);
-    this.drawUpgradeStationZone();
-
-    this.upgradeStationZoneAnchor = new Node('UpgradeStationZone_WorldAnchor');
-    director.getScene()?.addChild(this.upgradeStationZoneAnchor);
-
-    this.upgradeStationZoneTracker =
-      this.upgradeStationZoneAnchor.addComponent(UICoordinateTracker);
-    this.upgradeStationZoneTracker.camera = this.worldCamera;
-    this.upgradeStationZoneTracker.target = layer;
-    this.upgradeStationZoneTracker.useScale = false;
-    this.upgradeStationZoneTracker.syncEvents = [this.createUpgradeStationZoneSyncEvent()];
-  }
-
   private refreshUpgradeStationZoneLayout(): void {
-    if (this.upgradeStationZoneNode === null || !this.upgradeStationZoneNode.isValid) {
-      return;
-    }
-
-    this.upgradeStationZoneNode
-      .getComponent(UITransform)
-      ?.setContentSize(this.upgradeStationZoneWidth, this.upgradeStationZoneHeight);
-    this.drawUpgradeStationZone();
-
-    if (this.upgradeStationZoneTracker !== null) {
-      this.upgradeStationZoneTracker.target = this.getTargetHintLayer();
-      this.upgradeStationZoneTracker.update();
-    }
-  }
-
-  private updateUpgradeStationZone(deltaTime: number): void {
-    if (!this.upgradeStationZoneVisible || this.upgradeStationZoneNode === null) {
-      return;
-    }
-
-    this.upgradeStationZonePulseTime += deltaTime;
-    const pulse = 1 + Math.sin(this.upgradeStationZonePulseTime * 5.5) * 0.045;
-    const opacity = 185 + Math.sin(this.upgradeStationZonePulseTime * 5.5) * 38;
-
-    this.upgradeStationZoneNode.setScale(pulse, pulse, 1);
-
-    if (this.upgradeStationZoneOpacity !== null) {
-      this.upgradeStationZoneOpacity.opacity = Math.max(120, Math.min(230, opacity));
-    }
-  }
-
-  private drawUpgradeStationZone(): void {
-    if (this.upgradeStationZoneGraphics === null) {
-      return;
-    }
-
-    this.drawDashedZone(
-      this.upgradeStationZoneGraphics,
-      this.upgradeStationZoneWidth,
-      this.upgradeStationZoneHeight,
-      this.upgradeStationZoneRadius,
-      this.upgradeStationZoneDashLength,
-      this.upgradeStationZoneGapLength,
-    );
+    this.upgradeStationZone.refreshLayout(this.getUpgradeStationZoneConfig());
   }
 
   private drawTargetHintZone(): void {
@@ -1720,7 +890,7 @@ export class PlayableFeedbackView extends Component {
       return;
     }
 
-    this.drawDashedZone(
+    drawDashedZone(
       this.targetHintGraphics,
       this.targetHintRenderedSize.x,
       this.targetHintRenderedSize.y,
@@ -1795,211 +965,5 @@ export class PlayableFeedbackView extends Component {
     const height = Math.max(this.targetHintZoneMinHeight, maxY - minY + padding * 2);
     outSize.set(width, height, 0);
     return true;
-  }
-
-  private drawDashedZone(
-    graphics: Graphics,
-    zoneWidth: number,
-    zoneHeight: number,
-    zoneRadius: number,
-    zoneDashLength: number,
-    zoneGapLength: number,
-  ): void {
-    graphics.clear();
-    graphics.lineWidth = 5;
-    graphics.strokeColor = new Color(255, 255, 255, 230);
-    graphics.fillColor = new Color(255, 255, 255, 18);
-
-    const width = Math.max(40, zoneWidth);
-    const height = Math.max(40, zoneHeight);
-    const radius = Math.max(0, Math.min(zoneRadius, width / 2, height / 2));
-    const left = -width / 2;
-    const right = width / 2;
-    const bottom = -height / 2;
-    const top = height / 2;
-
-    graphics.roundRect(left, bottom, width, height, radius);
-    graphics.fill();
-
-    const points = this.createRoundedRectPoints(left, right, top, bottom, radius);
-    this.drawDashedPolyline(graphics, points, true, zoneDashLength, zoneGapLength);
-  }
-
-  private createRoundedRectPoints(
-    left: number,
-    right: number,
-    top: number,
-    bottom: number,
-    radius: number,
-  ): Vec3[] {
-    const points: Vec3[] = [];
-    const segmentsPerCorner = 8;
-
-    this.appendLinePoints(points, left + radius, top, right - radius, top, 8);
-    this.appendArcPoints(points, right - radius, top - radius, radius, 90, 0, segmentsPerCorner);
-    this.appendLinePoints(points, right, top - radius, right, bottom + radius, 8);
-    this.appendArcPoints(
-      points,
-      right - radius,
-      bottom + radius,
-      radius,
-      0,
-      -90,
-      segmentsPerCorner,
-    );
-    this.appendLinePoints(points, right - radius, bottom, left + radius, bottom, 8);
-    this.appendArcPoints(
-      points,
-      left + radius,
-      bottom + radius,
-      radius,
-      -90,
-      -180,
-      segmentsPerCorner,
-    );
-    this.appendLinePoints(points, left, bottom + radius, left, top - radius, 8);
-    this.appendArcPoints(points, left + radius, top - radius, radius, 180, 90, segmentsPerCorner);
-
-    return points;
-  }
-
-  private appendLinePoints(
-    points: Vec3[],
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-    segments: number,
-  ): void {
-    for (let index = 0; index <= segments; index += 1) {
-      const t = index / segments;
-      points.push(new Vec3(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, 0));
-    }
-  }
-
-  private appendArcPoints(
-    points: Vec3[],
-    centerX: number,
-    centerY: number,
-    radius: number,
-    fromDegrees: number,
-    toDegrees: number,
-    segments: number,
-  ): void {
-    for (let index = 1; index <= segments; index += 1) {
-      const t = index / segments;
-      const radians = ((fromDegrees + (toDegrees - fromDegrees) * t) * Math.PI) / 180;
-      points.push(
-        new Vec3(centerX + Math.cos(radians) * radius, centerY + Math.sin(radians) * radius, 0),
-      );
-    }
-  }
-
-  private drawDashedPolyline(
-    graphics: Graphics,
-    points: Vec3[],
-    closed: boolean,
-    zoneDashLength: number,
-    zoneGapLength: number,
-  ): void {
-    if (points.length < 2) {
-      return;
-    }
-
-    let drawing = true;
-    const dashLength = Math.max(1, zoneDashLength);
-    const gapLength = Math.max(1, zoneGapLength);
-    let remaining = dashLength;
-
-    for (let index = 0; index < points.length; index += 1) {
-      const start = points[index];
-      const end = points[(index + 1) % points.length];
-
-      if (!closed && index === points.length - 1) {
-        break;
-      }
-
-      let segmentStartX = start.x;
-      let segmentStartY = start.y;
-      const deltaX = end.x - start.x;
-      const deltaY = end.y - start.y;
-      let segmentRemaining = Math.hypot(deltaX, deltaY);
-
-      if (segmentRemaining <= 0.001) {
-        continue;
-      }
-
-      const directionX = deltaX / segmentRemaining;
-      const directionY = deltaY / segmentRemaining;
-
-      while (segmentRemaining > 0.001) {
-        const step = Math.min(remaining, segmentRemaining);
-        const segmentEndX = segmentStartX + directionX * step;
-        const segmentEndY = segmentStartY + directionY * step;
-
-        if (drawing) {
-          graphics.moveTo(segmentStartX, segmentStartY);
-          graphics.lineTo(segmentEndX, segmentEndY);
-        }
-
-        segmentStartX = segmentEndX;
-        segmentStartY = segmentEndY;
-        segmentRemaining -= step;
-        remaining -= step;
-
-        if (remaining <= 0.001) {
-          drawing = !drawing;
-          remaining = drawing ? dashLength : gapLength;
-        }
-      }
-    }
-
-    graphics.stroke();
-  }
-
-  private createUpgradeStationZoneSyncEvent(): EventHandler {
-    const event = new EventHandler();
-    event.target = this.node;
-    event.component = 'PlayableFeedbackView';
-    event.handler = 'handleUpgradeStationZoneCoordinateSync';
-    return event;
-  }
-
-  private destroyUpgradeStationZone(): void {
-    if (this.upgradeStationZoneNode !== null && this.upgradeStationZoneNode.isValid) {
-      this.upgradeStationZoneNode.destroy();
-    }
-
-    if (this.upgradeStationZoneAnchor !== null && this.upgradeStationZoneAnchor.isValid) {
-      this.upgradeStationZoneAnchor.destroy();
-    }
-
-    this.upgradeStationZoneNode = null;
-    this.upgradeStationZoneGraphics = null;
-    this.upgradeStationZoneOpacity = null;
-    this.upgradeStationZoneAnchor = null;
-    this.upgradeStationZoneTracker = null;
-    this.upgradeStationZoneVisible = false;
-  }
-
-  private destroyUpgradePopup(): void {
-    if (this.upgradePopupNode === null || !this.upgradePopupNode.isValid) {
-      this.upgradePopupNode = null;
-      return;
-    }
-
-    Tween.stopAllByTarget(this.upgradePopupNode);
-    this.upgradePopupNode.destroy();
-    this.upgradePopupNode = null;
-    this.upgradePopupDim = null;
-    this.upgradePopupCard = null;
-  }
-
-  private getHudWidth(): number {
-    return this.hudCanvas?.getComponent(UITransform)?.contentSize.width ?? 720;
-  }
-
-  private getHudHeight(): number {
-    return this.hudCanvas?.getComponent(UITransform)?.contentSize.height ?? 1280;
   }
 }
