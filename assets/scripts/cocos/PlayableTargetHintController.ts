@@ -174,6 +174,7 @@ export class PlayableTargetHintController {
 
   private resolveResourceTargetHint(snapshot: PlayableSnapshot): TargetHintCandidate | null {
     const player = this.options.getPlayer();
+    const resources = this.options.getResources();
     const targetLevel = snapshot.weaponLevel;
     let bestResource: BreakableResource | null = null;
     let bestDistance = Number.POSITIVE_INFINITY;
@@ -187,7 +188,7 @@ export class PlayableTargetHintController {
         continue;
       }
 
-      const resource = this.findResource(resourceState.id);
+      const resource = this.findResource(resources, resourceState.id);
 
       if (resource === null || !resource.node.activeInHierarchy) {
         continue;
@@ -221,8 +222,11 @@ export class PlayableTargetHintController {
     };
   }
 
-  private findResource(resourceId: string): BreakableResource | null {
-    for (const resource of this.options.getResources()) {
+  private findResource(
+    resources: BreakableResource[],
+    resourceId: string,
+  ): BreakableResource | null {
+    for (const resource of resources) {
       if (resource.getRuntimeId() === resourceId) {
         return resource;
       }

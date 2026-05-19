@@ -9,6 +9,16 @@ export class PlayerAnimationView {
     this.activeClip = '';
   }
 
+  public prewarm(clipNames: string[]): void {
+    if (this.animation === null) {
+      return;
+    }
+
+    for (const clipName of clipNames) {
+      this.animation.getState(clipName);
+    }
+  }
+
   public play(
     clipName: string,
     fadeDuration: number,

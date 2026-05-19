@@ -28,6 +28,8 @@ export class BrowserInputSafety {
     window.addEventListener('touchend', this.deferPointerReleaseReset);
     window.addEventListener('touchcancel', this.deferPointerReleaseReset);
     document.addEventListener('visibilitychange', this.options.resetInput);
+    document.addEventListener('pointerlockchange', this.onPointerLockChanged);
+    document.addEventListener('pointerlockerror', this.deferPointerReleaseReset);
     this.bound = true;
   }
 
@@ -44,9 +46,19 @@ export class BrowserInputSafety {
     window.removeEventListener('touchend', this.deferPointerReleaseReset);
     window.removeEventListener('touchcancel', this.deferPointerReleaseReset);
     document.removeEventListener('visibilitychange', this.options.resetInput);
+    document.removeEventListener('pointerlockchange', this.onPointerLockChanged);
+    document.removeEventListener('pointerlockerror', this.deferPointerReleaseReset);
     this.clearPointerReleaseTimer();
     this.bound = false;
   }
+
+  private readonly onPointerLockChanged = (): void => {
+    if (document.pointerLockElement !== null) {
+      return;
+    }
+
+    this.deferPointerReleaseReset();
+  };
 
   private readonly deferPointerReleaseReset = (): void => {
     if (this.pointerReleaseTimer !== 0) {

@@ -98,6 +98,7 @@ export class PlayerController extends Component {
     this.animationView.bind(
       animationNode.getComponent(SkeletalAnimation) ?? this.getComponent(SkeletalAnimation),
     );
+    this.animationView.prewarm([this.idleClip, this.runClip, this.attackClip]);
     this.joystickView.resolve();
   }
 
